@@ -1,22 +1,17 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   import {
-    Dropdown,
-    Icon,
-    TextInput,
-    Spinner,
-  } from '@mathesar-component-library';
-  import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
-  import {
-    requiredField,
-    makeForm,
     Field,
     FormSubmit,
+    makeForm,
+    requiredField,
   } from '@mathesar/components/form';
-  import { columnNameIsAvailable } from '@mathesar/utils/columnUtils';
   import { iconAddNew } from '@mathesar/icons';
-  import { toast } from '@mathesar/stores/toast';
-  import { getErrorMessage } from '@mathesar/utils/errors';
-  import type { RequestStatus } from '@mathesar/api/utils/requestUtils';
+  import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
+  import { columnNameIsAvailable } from '@mathesar/utils/columnUtils';
+  import { Dropdown, Icon, Spinner } from '@mathesar-component-library';
+
   import ColumnTypeSelector from './ColumnTypeSelector.svelte';
 
   const tabularData = getTabularDataStoreFromContext();
@@ -26,27 +21,14 @@
   $: columnName = requiredField('', [columnNameIsAvailable($columns)]);
   const columnType = requiredField<string | undefined>(undefined);
   $: form = makeForm({ columnName, columnType });
-
-  let requestStatus: RequestStatus;
-  $: isLoading = requestStatus?.state === 'processing';
+  $: ({ isSubmitting } = form);
 
   async function addColumn(closeDropdown: () => void) {
-    const newColumn = {
+    await columnsDataStore.add({
       name: $columnName,
       type: $columnType,
-      nullable: true,
-      primary_key: false,
-    };
-    try {
-      requestStatus = { state: 'processing' };
-      await columnsDataStore.add(newColumn);
-      closeDropdown();
-      requestStatus = { state: 'success' };
-    } catch (err) {
-      const errorMessage = getErrorMessage(err);
-      toast.error(`Unable to add column. ${errorMessage}`);
-      requestStatus = { state: 'failure', errors: [errorMessage] };
-    }
+    });
+    closeDropdown();
   }
 </script>
 
@@ -54,36 +36,32 @@
   closeOnInnerClick={false}
   triggerAppearance="secondary"
   showArrow={false}
-  ariaLabel="New Column"
+  ariaLabel={$_('new_column')}
   on:close={form.reset}
-  disabled={isLoading}
+  disabled={$isSubmitting}
 >
   <svelte:fragment slot="trigger">
-    {#if isLoading}
+    {#if $isSubmitting}
       <Spinner />
     {:else}
       <Icon class="opt" {...iconAddNew} size="0.9em" />
     {/if}
   </svelte:fragment>
   <div slot="content" class="new-column-dropdown" let:close>
-    <Field
-      field={columnName}
-      input={{ component: TextInput, props: { disabled: isLoading } }}
-      label="Column Name"
-      layout="stacked"
-    />
+    <Field field={columnName} label={$_('column_name')} layout="stacked" />
     <Field
       field={columnType}
-      input={{ component: ColumnTypeSelector, props: { disabled: isLoading } }}
-      label="Select Type"
+      input={{ component: ColumnTypeSelector }}
+      label={$_('select_type')}
       layout="stacked"
     />
     <div class="submit">
       <FormSubmit
         {form}
-        proceedButton={{ label: 'Add' }}
+        proceedButton={{ label: $_('add') }}
         onProceed={() => addColumn(close)}
         onCancel={close}
+        catchErrors
       />
     </div>
   </div>

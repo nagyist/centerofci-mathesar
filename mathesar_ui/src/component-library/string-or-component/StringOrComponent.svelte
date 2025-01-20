@@ -1,9 +1,15 @@
+<!--
+  @component
+
+  @deprecated in favor of `Render` which accepts `ComponentWithProps` for better
+  type safety in comparing a component to its props.
+-->
 <script lang="ts">
-  import type { ComponentAndProps } from '@mathesar-component-library-dir/types';
   import {
     hasProperty,
     isDefinedObject,
   } from '@mathesar-component-library-dir/common/utils/typeUtils';
+  import type { ComponentAndProps } from '@mathesar-component-library-dir/types';
 
   export let arg: string | string[] | ComponentAndProps;
 

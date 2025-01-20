@@ -1,15 +1,11 @@
 import { get } from 'svelte/store';
-import { currentSchema } from '@mathesar/stores/schemas';
+import { _ } from 'svelte-i18n';
 
 const SEPARATOR = ' | ';
 
 function makePageTitle(parts: string[]): string {
-  const schema = get(currentSchema);
   const allParts = [...parts];
-  if (schema) {
-    allParts.push(schema.name);
-  }
-  allParts.push('Mathesar');
+  allParts.push(get(_)('mathesar'));
   return allParts.join(SEPARATOR);
 }
 

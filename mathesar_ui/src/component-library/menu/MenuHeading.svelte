@@ -1,1 +1,3 @@
-<div class="menu-heading"><slot /></div>
+<script lang="ts"></script>
+
+<div class="menu-heading" {...$$restProps}><slot /></div>

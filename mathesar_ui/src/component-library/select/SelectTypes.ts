@@ -4,7 +4,7 @@ import type { Appearance } from '@mathesar-component-library-dir/commonTypes';
 import type { ListBoxProps } from '@mathesar-component-library-dir/list-box/ListBoxTypes';
 
 export interface SelectProps<Option> extends BaseInputProps {
-  options: Option[];
+  options: readonly Option[];
   value?: Option;
   labelKey?: string;
   getLabel?: LabelGetter<Option | undefined>;
@@ -14,6 +14,9 @@ export interface SelectProps<Option> extends BaseInputProps {
   triggerAppearance?: Appearance;
   ariaLabel?: string;
   valuesAreEqual?: ListBoxProps<Option | undefined>['checkEquality'];
+  isOptionDisabled?: ListBoxProps<
+    Option | undefined
+  >['checkIfOptionIsDisabled'];
   /**
    * When options change and the selected value is either undefined or
    * not present in the options array, autoSelect determines how to

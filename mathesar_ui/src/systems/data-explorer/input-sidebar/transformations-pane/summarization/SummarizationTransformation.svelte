@@ -1,16 +1,22 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { _ } from 'svelte-i18n';
+
+  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
+  import GroupEntryComponent from '@mathesar/components/group-entry/GroupEntry.svelte';
   import {
     ImmutableMap,
-    MultiSelect,
     LabeledInput,
+    MultiSelect,
   } from '@mathesar-component-library';
-  import GroupEntryComponent from '@mathesar/components/group-entry/GroupEntry.svelte';
-  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
-  import type QuerySummarizationTransformationModel from '../../../QuerySummarizationTransformationModel';
+
+  import type {
+    QuerySummarizationAggregationEntry,
+    QuerySummarizationTransformationModel,
+  } from '../../../QuerySummarizationTransformationModel';
   import type { ProcessedQueryResultColumnMap } from '../../../utils';
+
   import Aggregation from './Aggregation.svelte';
-  import type { QuerySummarizationAggregationEntry } from '../../../QuerySummarizationTransformationModel';
 
   const dispatch = createEventDispatcher();
 
@@ -91,7 +97,7 @@
   />
   {#if groups.size > 0}
     <section>
-      <LabeledInput label="Not Aggregated" layout="stacked">
+      <LabeledInput label={$_('not_aggregated')} layout="stacked">
         <MultiSelect
           values={[...groups.values()].map((entry) => entry.inputAlias)}
           options={[...columns.without(model.columnIdentifier).values()].map(
@@ -108,7 +114,6 @@
               name: columnInfo?.display_name ?? '',
               type: columnInfo?.type ?? 'unknown',
               type_options: columnInfo?.type_options ?? null,
-              display_options: null,
             }}
           />
         </MultiSelect>
@@ -117,7 +122,7 @@
   {/if}
   {#if aggregations.size > 0}
     <section>
-      <header>Aggregate</header>
+      <header>{$_('aggregate')}</header>
       {#each [...aggregations.values()] as aggregation (aggregation.inputAlias)}
         <Aggregation
           processedColumn={columns.get(aggregation.inputAlias)}

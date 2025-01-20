@@ -3,10 +3,9 @@
 </p>
 <p align="center"><b>An intuitive UI for managing data, for users of all technical skill levels. Built on Postgres.</b></p>
 <p align="center">
-    <img alt="License" src="https://img.shields.io/github/license/centerofci/mathesar">
-    <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/centerofci/mathesar">
-    <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/w/centerofci/mathesar">
-    <img alt="Codecov" src="https://img.shields.io/codecov/c/github/centerofci/mathesar">
+    <img alt="License" src="https://img.shields.io/github/license/mathesar-foundation/mathesar">
+    <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/mathesar-foundation/mathesar">
+    <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/w/mathesar-foundation/mathesar">
 </p>
 
 <p align="center">
@@ -31,15 +30,15 @@ You can use Mathesar to build **data models**, **enter data**, and even **build 
 - [Live Demo](#live-demo)
 - [Features](#features)
 - [Self-hosting](#self-hosting)
-- [Local development setup](#local-development-setup)
 - [Our motivation](#our-motivation)
 - [Contributing](#contributing)
+- [Bugs and troubleshooting](#bugs-and-troubleshooting)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Sponsors
-Our top sponsors! Become a sponsor on [GitHub](https://github.com/sponsors/centerofci) or [Open Collective](https://opencollective.com/mathesar).
+Our top sponsors! Become a sponsor on [GitHub](https://github.com/sponsors/mathesar-foundation) or [Open Collective](https://opencollective.com/mathesar).
 
 <table>
   <tbody>
@@ -97,9 +96,6 @@ Check out a [live demo of Mathesar here](https://demo.mathesar.org)!
 ## Self-hosting
 Please see [our documentation](https://docs.mathesar.org/) for instructions on installing Mathesar on your own server.
 
-## Local development setup
-Please see [our guide in our documentation](http://docs.mathesar.org/contributing/local-dev/).
-
 ## Our motivation
 Mathesar is a non-profit project. Our goal is to make understanding and working with data easy for everyone.
 
@@ -108,7 +104,10 @@ Databases have been around for a long time and solve common data problems really
 We want to make existing database functionality more accessible, for users of all technical skill levels.
 
 ## Contributing
-We actively encourage contribution! Read through [our contributing guidelines](https://wiki.mathesar.org/community/contributing) to get started.
+We actively encourage contribution! Get started by reading our [Contributor Guide](./CONTRIBUTING.md).
+
+## Bugs and troubleshooting
+If you run into problems, refer to our [troubleshooting guide](./TROUBLESHOOTING.md).
 
 ## License
 Mathesar is open source under the GPLv3 license - see [LICENSE](LICENSE). It also contains derivatives of third-party open source modules licensed under the MIT license. See the list and respective licenses in [THIRDPARTY](THIRDPARTY).

@@ -1,37 +1,45 @@
 <script lang="ts">
+  import type { Tab } from '@mathesar/component-library/types';
   import { TabContainer } from '@mathesar-component-library';
-  import type QueryRunner from '../QueryRunner';
+
+  import type { ExplorationInspectorTab } from '../QueryInspector';
   import type QueryManager from '../QueryManager';
-  import ExplorationTab from './ExplorationTab.svelte';
+  import type { QueryRunner } from '../QueryRunner';
+
+  import CellTab from './cell/CellTab.svelte';
   import ColumnTab from './column-tab/ColumnTab.svelte';
-  import CellTab from './CellTab.svelte';
+  import ExplorationTab from './ExplorationTab.svelte';
 
   export let queryHandler: QueryRunner | QueryManager;
-  export let canEditMetadata: boolean;
 
   $: ({ inspector, query } = queryHandler);
   $: ({ tabs, activeTab } = inspector);
+
+  function handleTabSelected(e: CustomEvent<{ tab: Tab }>) {
+    const tab = e.detail.tab as ExplorationInspectorTab;
+    inspector.activate(tab.id);
+  }
 </script>
 
 <aside class="exploration-inspector">
   <TabContainer
     tabStyle="compact"
     tabs={$tabs}
-    bind:activeTab={$activeTab}
+    activeTab={$activeTab}
     fillTabWidth
     fillContainerHeight
+    on:tabSelected={handleTabSelected}
   >
-    {#if $activeTab?.id === 'inspect-exploration'}
+    {#if $activeTab.id === 'exploration'}
       <ExplorationTab
         {queryHandler}
         name={$query.name}
         description={$query.description}
-        {canEditMetadata}
         on:delete
       />
-    {:else if $activeTab?.id === 'inspect-column'}
+    {:else if $activeTab.id === 'column'}
       <ColumnTab {queryHandler} />
-    {:else if $activeTab?.id === 'inspect-cell'}
+    {:else if $activeTab.id === 'cell'}
       <CellTab {queryHandler} />
     {/if}
   </TabContainer>
@@ -39,12 +47,9 @@
 
 <style lang="scss">
   .exploration-inspector {
-    width: var(--exploration-inspector-width);
-    flex-basis: var(--exploration-inspector-width);
+    height: 100%;
     border-left: 1px solid var(--slate-300);
     background: var(--sand-100);
-    flex-shrink: 0;
-    flex-grow: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -75,10 +80,12 @@
         background-color: var(--sand-400);
       }
     }
-    :global(.collapsible
-        > .collapsible-header
-        > button.btn
-        .collapsible-header-title) {
+    :global(
+        .collapsible
+          > .collapsible-header
+          > button.btn
+          .collapsible-header-title
+      ) {
       font-weight: 590;
     }
     :global(.collapsible .section-content.actions .delete-button) {

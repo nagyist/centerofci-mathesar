@@ -6,6 +6,7 @@ export { getPageCount as getPaginationPageCount } from './pagination/paginationU
 export { default as clickOffBounds } from './common/actions/clickOffBounds';
 export { default as popper } from './common/actions/popper';
 export { default as portal } from './common/actions/portal';
+export { default as slider } from './common/actions/slider';
 
 // Simple Components
 export { default as AnchorButton } from './anchorButton/AnchorButton.svelte';
@@ -15,11 +16,13 @@ export { default as Tutorial } from './tutorial/Tutorial.svelte';
 export { default as Button } from './button/Button.svelte';
 export { default as CancelOrProceedButtonPair } from './cancel-or-proceed-button-pair/CancelOrProceedButtonPair.svelte';
 export { default as Checkbox } from './checkbox/Checkbox.svelte';
+export { default as BooleanCheckbox } from './checkbox/BooleanCheckbox.svelte';
 export { default as CheckboxGroup } from './checkbox-group/CheckboxGroup.svelte';
 export { default as Chip } from './chip/Chip.svelte';
 export { default as Collapsible } from './collapsible/Collapsible.svelte';
 export { default as ContextMenu } from './context-menu/ContextMenu.svelte';
 export { default as Debounce } from './debounce/Debounce.svelte';
+export { default as Fieldset } from './fieldset/Fieldset.svelte';
 export { default as Help } from './help/Help.svelte';
 export { default as Icon } from './icon/Icon.svelte';
 export { InputGroup, InputGroupText } from './input-group';
@@ -34,6 +37,7 @@ export { default as PasswordInput } from './password-input/PasswordInput.svelte'
 export { default as Progress } from './progress/Progress.svelte';
 export { default as Radio } from './radio/Radio.svelte';
 export { default as RadioGroup } from './radio-group/RadioGroup.svelte';
+export { default as Render } from './render/Render.svelte';
 export { default as Skeleton } from './skeleton/Skeleton.svelte';
 export { default as Spinner } from './spinner/Spinner.svelte';
 export { default as SpinnerArea } from './spinner-area/SpinnerArea.svelte';
@@ -45,6 +49,7 @@ export { default as TextInput } from './text-input/TextInput.svelte';
 export { default as TextInputWithPrefix } from './text-input/TextInputWithPrefix.svelte';
 export { default as Truncate } from './truncate/Truncate.svelte';
 export { default as Tooltip } from './tooltip/Tooltip.svelte';
+export { default as WithPanel } from './with-panel/WithPanel.svelte';
 
 // Compound Components (Ordered)
 export { DatePicker, InlineDateTimePicker } from './date-time-picker';

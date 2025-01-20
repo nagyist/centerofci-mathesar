@@ -1,7 +1,8 @@
 <script lang="ts">
-  import Icon from '@mathesar-component-library-dir/icon/Icon.svelte';
-  import { ensureReadable } from '@mathesar-component-library-dir/common/utils/storeUtils';
   import { iconClose } from '@mathesar-component-library-dir/common/icons';
+  import { ensureReadable } from '@mathesar-component-library-dir/common/utils/storeUtils';
+  import Icon from '@mathesar-component-library-dir/icon/Icon.svelte';
+
   import type { ToastEntry } from './ToastController';
 
   export let entry: ToastEntry;
@@ -23,9 +24,9 @@
   $: readableTextColor = ensureReadable(props.textColor);
   $: readableProgressColor = ensureReadable(props.progressColor);
   $: style = `
-    --toast-item-background-color: ${$readableBackgroundColor as string};
-    --toast-item-text-color: ${$readableTextColor as string};
-    --toast-item-progress-color: ${$readableProgressColor as string};
+    --toast-item-background-color: ${$readableBackgroundColor};
+    --toast-item-text-color: ${$readableTextColor};
+    --toast-item-progress-color: ${$readableProgressColor};
   `;
 </script>
 

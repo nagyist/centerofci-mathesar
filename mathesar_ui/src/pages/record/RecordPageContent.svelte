@@ -1,21 +1,23 @@
 <script lang="ts">
-  import type { TableEntry } from '@mathesar/api/types/tables';
-  import type { JoinableTablesResult } from '@mathesar/api/types/tables/joinable_tables';
-  import { getDetailedRecordsErrors } from '@mathesar/api/utils/recordUtils';
-  import { getAPI } from '@mathesar/api/utils/requestUtils';
+  import { _ } from 'svelte-i18n';
+
+  import { getDetailedRecordsErrors } from '@mathesar/api/rest/utils/recordUtils';
+  import { api } from '@mathesar/api/rpc';
   import {
-    FormSubmitWithCatch,
+    FormSubmit,
     makeForm,
     optionalField,
   } from '@mathesar/components/form';
   import FormStatus from '@mathesar/components/form/FormStatus.svelte';
   import NameWithIcon from '@mathesar/components/NameWithIcon.svelte';
-  import RecordSummary from '@mathesar/components/RecordSummary.svelte';
+  import { RichText } from '@mathesar/components/rich-text';
   import TableName from '@mathesar/components/TableName.svelte';
   import { iconRecord, iconSave, iconUndo } from '@mathesar/icons';
   import InsetPageLayout from '@mathesar/layouts/InsetPageLayout.svelte';
+  import type { Table } from '@mathesar/models/Table';
   import type { TableStructure } from '@mathesar/stores/table-data';
   import { currentTable } from '@mathesar/stores/tables';
+
   import DirectField from './DirectField.svelte';
   import RecordPageLoadingSpinner from './RecordPageLoadingSpinner.svelte';
   import type RecordStore from './RecordStore';
@@ -24,7 +26,9 @@
   export let record: RecordStore;
   export let tableStructure: TableStructure;
 
-  $: table = $currentTable as TableEntry;
+  $: table = $currentTable as Table;
+  $: ({ currentRolePrivileges } = table.currentAccess);
+  $: canUpdateTableRecords = $currentRolePrivileges.has('UPDATE');
   $: ({ processedColumns } = tableStructure);
   $: ({ recordPk, summary, fieldValues } = record);
   $: fieldPropsObjects = [...$processedColumns.values()].map((c) => ({
@@ -37,9 +41,13 @@
   $: form = makeForm(formFields);
 
   function getJoinableTablesResult(tableId: number) {
-    return getAPI<JoinableTablesResult>(
-      `/api/db/v0/tables/${tableId}/joinable_tables/?max_depth=1`,
-    );
+    return api.tables
+      .list_joinable({
+        database_id: table.schema.database.id,
+        table_oid: tableId,
+        max_depth: 1,
+      })
+      .run();
   }
 </script>
 
@@ -47,26 +55,33 @@
   <InsetPageLayout>
     <div slot="header" class="header">
       <h1 class="title">
-        <NameWithIcon icon={iconRecord}>
-          <RecordSummary recordSummary={$summary} />
-        </NameWithIcon>
+        <NameWithIcon icon={iconRecord}>{$summary}</NameWithIcon>
       </h1>
       <div class="table-name">
-        Record in
-        <strong><TableName {table} truncate={false} /></strong>
+        <RichText text={$_('record_in_table')} let:slotName>
+          {#if slotName === 'tableName'}
+            <TableName {table} truncate={false} />
+          {/if}
+        </RichText>
       </div>
       <div class="form-status"><FormStatus {form} /></div>
     </div>
     <div class="fields">
       {#each fieldPropsObjects as { field, processedColumn } (processedColumn.id)}
-        <DirectField {record} {processedColumn} {field} />
+        <DirectField
+          {record}
+          {processedColumn}
+          {field}
+          {canUpdateTableRecords}
+        />
       {/each}
     </div>
     <div class="submit">
-      <FormSubmitWithCatch
+      <FormSubmit
         {form}
-        proceedButton={{ label: 'Save', icon: iconSave }}
-        cancelButton={{ label: 'Discard Changes', icon: iconUndo }}
+        catchErrors
+        proceedButton={{ label: $_('save'), icon: iconSave }}
+        cancelButton={{ label: $_('discard_changes'), icon: iconUndo }}
         onProceed={() => record.patch($form.values)}
         getErrorMessages={(e) => {
           const { columnErrors, recordErrors } = getDetailedRecordsErrors(e);
@@ -80,7 +95,7 @@
     </div>
   </InsetPageLayout>
 
-  {#await getJoinableTablesResult(table.id)}
+  {#await getJoinableTablesResult(table.oid)}
     <RecordPageLoadingSpinner />
   {:then joinableTablesResult}
     <Widgets {joinableTablesResult} {recordPk} recordSummary={$summary} />
@@ -97,7 +112,7 @@
   .header {
     display: grid;
     grid-template: auto auto / auto 1fr;
-    gap: 0.25rem 1.5rem;
+    gap: 0.5rem 1.5rem;
     align-items: center;
     margin-bottom: 1.5rem;
     overflow: hidden;

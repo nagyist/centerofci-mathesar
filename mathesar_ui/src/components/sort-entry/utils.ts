@@ -1,3 +1,6 @@
+import { get } from 'svelte/store';
+import { _ } from 'svelte-i18n';
+
 import type { CellDataType } from '../cell-fabric/data-types/typeDefinitions';
 
 export type SortDirection = 'ASCENDING' | 'DESCENDING';
@@ -13,8 +16,8 @@ export function getSortingLabelForColumn(
 ): Record<SortDirection, string> {
   if (hasFkConstraint) {
     return {
-      ASCENDING: 'Ascending ID',
-      DESCENDING: 'Descending ID',
+      ASCENDING: get(_)('ascending_id'),
+      DESCENDING: get(_)('descending_id'),
     };
   }
 
@@ -27,8 +30,8 @@ export function getSortingLabelForColumn(
 
   if (['date', 'datetime', 'time'].includes(dataType)) {
     return {
-      ASCENDING: 'Oldest-Newest',
-      DESCENDING: 'Newest-Oldest',
+      ASCENDING: get(_)('oldest_to_newest_sort'),
+      DESCENDING: get(_)('newest_to_oldest_sort'),
     };
   }
 
@@ -40,7 +43,7 @@ export function getSortingLabelForColumn(
   }
 
   return {
-    ASCENDING: 'Ascending',
-    DESCENDING: 'Descending',
+    ASCENDING: get(_)('ascending'),
+    DESCENDING: get(_)('descending'),
   };
 }

@@ -1,11 +1,6 @@
 <script lang="ts">
-  import {
-    ButtonMenuItem,
-    DropdownMenu,
-    iconExpandDown,
-    Label,
-    LabelController,
-  } from '@mathesar/component-library';
+  import { _ } from 'svelte-i18n';
+
   import type { CellDataType } from '@mathesar/components/cell-fabric/data-types/typeDefinitions';
   import DynamicInput from '@mathesar/components/cell-fabric/DynamicInput.svelte';
   import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
@@ -13,13 +8,16 @@
   import FieldErrors from '@mathesar/components/form/FieldErrors.svelte';
   import Null from '@mathesar/components/Null.svelte';
   import { iconSetToNull } from '@mathesar/icons';
-  import { currentDatabase } from '@mathesar/stores/databases';
-  import { currentSchema } from '@mathesar/stores/schemas';
   import type { ProcessedColumn } from '@mathesar/stores/table-data';
-  import { getUserProfileStoreFromContext } from '@mathesar/stores/userProfile';
-  import type RecordStore from './RecordStore';
+  import {
+    ButtonMenuItem,
+    DropdownMenu,
+    Label,
+    LabelController,
+    iconExpandDown,
+  } from '@mathesar-component-library';
 
-  const userProfile = getUserProfileStoreFromContext();
+  import type RecordStore from './RecordStore';
 
   /**
    * This is used to determine whether to display a `NULL` overlay indicator.
@@ -46,17 +44,19 @@
   export let record: RecordStore;
   export let processedColumn: ProcessedColumn;
   export let field: FieldStore;
+  export let canUpdateTableRecords = true;
 
-  $: database = $currentDatabase;
-  $: schema = $currentSchema;
-  $: canEditTableRecords =
-    $userProfile?.hasPermission({ database, schema }, 'canEditTableRecords') ??
-    false;
   $: ({ recordSummaries } = record);
   $: ({ column, abstractType } = processedColumn);
+  $: canUpdateColumn = processedColumn.currentRolePrivileges.has('UPDATE');
   $: value = $field;
+  $: fieldIsDisabled = field.disabled;
   $: ({ showsError } = field);
-  $: disabled = column.primary_key || !canEditTableRecords;
+  $: disabled =
+    column.primary_key ||
+    $fieldIsDisabled ||
+    !canUpdateTableRecords ||
+    !canUpdateColumn;
   $: shouldDisplayNullOverlay = !cellDataTypesThatUsePlaceholderText.has(
     abstractType.cellInfo.type,
   );
@@ -75,7 +75,9 @@
           showArrow={false}
           triggerAppearance="plain"
           closeOnInnerClick={true}
-          ariaLabel="{column.name} Field Options"
+          ariaLabel={$_('column_field_options', {
+            values: { columnName: column.name },
+          })}
           icon={iconExpandDown}
         >
           <ButtonMenuItem
@@ -83,7 +85,8 @@
             on:click={() => field.set(null)}
             {disabled}
           >
-            Set to <Null />
+            {$_('set_to')}
+            <Null />
           </ButtonMenuItem>
         </DropdownMenu>
       </div>

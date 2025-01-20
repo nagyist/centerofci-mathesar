@@ -1,20 +1,32 @@
 <script lang="ts">
-  import { writable } from 'svelte/store';
-  import type { Writable } from 'svelte/store';
-  import { Button, Icon } from '@mathesar-component-library';
-  import {
-    getTabularDataStoreFromContext,
-    type Filtering,
-  } from '@mathesar/stores/table-data';
-  import type { FilterCombination } from '@mathesar/api/types/tables/records';
+  import { takeLast } from 'iter-tools';
+  import { onMount, tick } from 'svelte';
+  import { type Writable, writable } from 'svelte/store';
+  import { _ } from 'svelte-i18n';
+
+  import type { LinkedRecordInputElement } from '@mathesar/components/cell-fabric/data-types/components/linked-record/LinkedRecordUtils';
+  import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
   import { validateFilterEntry } from '@mathesar/components/filter-entry';
+  import { FILTER_INPUT_CLASS } from '@mathesar/components/filter-entry/utils';
   import { iconAddNew } from '@mathesar/icons';
-  import FilterEntries from './FilterEntries.svelte';
+  import { getImperativeFilterControllerFromContext } from '@mathesar/pages/table/ImperativeFilterController';
+  import type {
+    Filtering,
+    ProcessedColumns,
+  } from '@mathesar/stores/table-data';
+  import type { FilterCombination } from '@mathesar/stores/table-data/filtering';
+  import type RecordSummaryStore from '@mathesar/stores/table-data/record-summaries/RecordSummaryStore';
+  import { ButtonMenuItem, DropdownMenu } from '@mathesar-component-library';
+
   import { deepCloneFiltering } from '../utils';
 
-  const tabularData = getTabularDataStoreFromContext();
+  import FilterEntries from './FilterEntries.svelte';
+
+  const imperativeFilterController = getImperativeFilterControllerFromContext();
 
   export let filtering: Writable<Filtering>;
+  export let processedColumns: ProcessedColumns;
+  export let recordSummaries: RecordSummaryStore;
 
   // This component is not reactive towards $filtering
   // to avoid having to sync states and handle unnecessary set calls,
@@ -23,12 +35,13 @@
   // everytime the dropdown reopens.
   const internalFiltering = writable(deepCloneFiltering($filtering));
 
-  $: ({ processedColumns } = $tabularData);
+  let element: HTMLElement;
+
   $: filterCount = $internalFiltering.entries.length;
 
   function checkAndSetExternalFiltering() {
     const validFilters = $internalFiltering.entries.filter((filter) => {
-      const column = $processedColumns.get(filter.columnId);
+      const column = processedColumns.get(filter.columnId);
       const condition = column?.allowedFiltersMap.get(filter.conditionId);
       if (condition) {
         return validateFilterEntry(condition, filter.value);
@@ -45,17 +58,17 @@
     filtering.set(newFiltering);
   }
 
-  function addFilter() {
-    const firstColumn = [...$processedColumns.values()][0];
-    if (!firstColumn) {
+  function addFilter(columnId: number) {
+    const column = processedColumns.get(columnId);
+    if (!column) {
       return;
     }
-    const firstCondition = [...firstColumn.allowedFiltersMap.values()][0];
+    const firstCondition = [...column.allowedFiltersMap.values()][0];
     if (!firstCondition) {
       return;
     }
     const newFilter = {
-      columnId: firstColumn.column.id,
+      columnId: column.id,
       conditionId: firstCondition.id,
       value: undefined,
       isValid: validateFilterEntry(firstCondition, undefined),
@@ -77,13 +90,37 @@
   function updateFilter() {
     checkAndSetExternalFiltering();
   }
+
+  function activateLastFilterInput() {
+    const lastFilterInput = takeLast(
+      element.querySelectorAll<HTMLElement | LinkedRecordInputElement>(
+        `.${FILTER_INPUT_CLASS}`,
+      ),
+    );
+    if (lastFilterInput) {
+      if ('launchRecordSelector' in lastFilterInput) {
+        void lastFilterInput.launchRecordSelector();
+      } else {
+        lastFilterInput.focus();
+      }
+    }
+  }
+
+  onMount(() => imperativeFilterController?.onAddFilter(addFilter));
+  onMount(() =>
+    imperativeFilterController?.onActivateLastFilterInput(
+      activateLastFilterInput,
+    ),
+  );
 </script>
 
-<div class="filters" class:filtered={filterCount}>
-  <div class="header">Filter records</div>
+<div class="filters" class:filtered={filterCount} bind:this={element}>
+  <div class="header">{$_('filter_records')}</div>
   <div class="content">
     {#if filterCount}
       <FilterEntries
+        {processedColumns}
+        {recordSummaries}
         bind:entries={$internalFiltering.entries}
         bind:filterCombination={$internalFiltering.combination}
         on:remove={(e) => removeFilter(e.detail)}
@@ -91,15 +128,29 @@
         on:updateCombination={(e) => setCombination(e.detail)}
       />
     {:else}
-      <span class="muted">No filters have been added</span>
+      <span class="muted">{$_('no_filters_added')}</span>
     {/if}
   </div>
-  {#if $processedColumns.size}
+  {#if processedColumns.size}
     <div class="footer">
-      <Button appearance="secondary" on:click={addFilter}>
-        <Icon {...iconAddNew} />
-        <span>Add New Filter</span>
-      </Button>
+      <DropdownMenu
+        icon={iconAddNew}
+        label={$_('add_new_filter')}
+        disabled={processedColumns.size === 0}
+        triggerAppearance="secondary"
+      >
+        {#each [...processedColumns.values()] as column (column.id)}
+          <ButtonMenuItem
+            on:click={async () => {
+              addFilter(column.id);
+              await tick();
+              activateLastFilterInput();
+            }}
+          >
+            <ProcessedColumnName processedColumn={column} />
+          </ButtonMenuItem>
+        {/each}
+      </DropdownMenu>
     </div>
   {/if}
 </div>

@@ -9,37 +9,27 @@
    * if such a need arises in the future.
    */
   import { tick } from 'svelte';
-  import {
-    LabeledInput,
-    type ModalController,
-  } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
+  import TextArea from '@mathesar/component-library/text-area/TextArea.svelte';
+  import { toast } from '@mathesar/stores/toast';
   import {
     CancelOrProceedButtonPair,
     ControlledModal,
+    LabeledInput,
+    type ModalController,
     TextInput,
   } from '@mathesar-component-library';
-  import { toast } from '@mathesar/stores/toast';
-  import TextArea from '@mathesar/component-library/text-area/TextArea.svelte';
 
-  export let saveButtonLabel = 'Save';
+  export let saveButtonLabel = $_('save');
   export let controller: ModalController;
   export let getNameValidationErrors: (name: string) => string[];
   export let getInitialName: () => string = () => '';
   export let getInitialDescription: () => string = () => '';
   export let save: (name: string, description: string) => Promise<void>;
-
-  /**
-   * NOTE: This is NOT a feature
-   *
-   * Ideally this component should not have this prop
-   * since the name of the component itself suggests
-   * that its used to edit both name and description
-   *
-   * But still adding this prop to support only editing
-   * table name. Since editing table description is planned
-   * but will come in future.
-   */
-  export let hideDescription = false;
+  export let namePlaceholder = $_('name');
+  export let descriptionPlaceholder = $_('description');
+  export let disabled = false;
 
   let isSubmitting = false;
   let inputElement: HTMLInputElement;
@@ -74,7 +64,7 @@
   }
 
   $: nameValidationErrors = getNameValidationErrors(name);
-  $: canProceed = !nameValidationErrors.length;
+  $: canProceed = !nameValidationErrors.length && !disabled;
 </script>
 
 <ControlledModal
@@ -89,16 +79,16 @@
     <slot name="helpText" />
 
     <div class="input-container">
-      <LabeledInput label="Name" layout="stacked">
+      <LabeledInput label={$_('name')} layout="stacked">
         <TextInput
           bind:value={name}
           bind:element={inputElement}
-          aria-label="name"
+          aria-label={$_('name')}
           on:input={() => {
             nameHasChanged = true;
           }}
-          disabled={isSubmitting}
-          placeholder="Name"
+          disabled={isSubmitting || disabled}
+          placeholder={namePlaceholder}
           id="name"
         />
         {#if nameHasChanged && nameValidationErrors.length}
@@ -109,18 +99,16 @@
       </LabeledInput>
     </div>
 
-    {#if !hideDescription}
-      <div class="input-container">
-        <LabeledInput label="Description" layout="stacked">
-          <TextArea
-            bind:value={description}
-            aria-label="description"
-            disabled={isSubmitting}
-            placeholder="Description"
-          />
-        </LabeledInput>
-      </div>
-    {/if}
+    <div class="input-container">
+      <LabeledInput label={$_('description')} layout="stacked">
+        <TextArea
+          bind:value={description}
+          aria-label={$_('description')}
+          disabled={isSubmitting || disabled}
+          placeholder={descriptionPlaceholder}
+        />
+      </LabeledInput>
+    </div>
   </div>
   <CancelOrProceedButtonPair
     proceedButton={{ label: saveButtonLabel }}
@@ -144,7 +132,7 @@
     flex-direction: column;
 
     > :global(* + *) {
-      margin-top: 1rem;
+      margin-top: 0.25rem;
     }
   }
 

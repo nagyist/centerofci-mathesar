@@ -1,11 +1,13 @@
 <script lang="ts">
-  import type { Constraint } from '@mathesar/stores/table-data';
+  import { _ } from 'svelte-i18n';
+
+  import type { Constraint } from '@mathesar/api/rpc/constraints';
 
   export let constraint: Constraint;
 </script>
 
 <div class="constraint-details">
-  <span>Constraint Name:</span>
+  <span>{$_('constraint_name')}:</span>
   <span>{constraint.name}</span>
 </div>
 

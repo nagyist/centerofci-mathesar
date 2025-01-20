@@ -1,22 +1,25 @@
 <script lang="ts">
-  import type { QueryInstance } from '@mathesar/api/types/queries';
-  import Icon from '@mathesar/component-library/icon/Icon.svelte';
+  import { _ } from 'svelte-i18n';
+
+  import type { SavedExploration } from '@mathesar/api/rpc/explorations';
   import TableName from '@mathesar/components/TableName.svelte';
   import { iconExploration } from '@mathesar/icons';
+  import type { Database } from '@mathesar/models/Database';
+  import type { Schema } from '@mathesar/models/Schema';
   import { getExplorationPageUrl } from '@mathesar/routes/urls';
-  import { tables as tablesStore } from '@mathesar/stores/tables';
-  import type { Database, SchemaEntry } from '@mathesar/AppTypes';
+  import { currentTablesData as tablesStore } from '@mathesar/stores/tables';
+  import { Icon } from '@mathesar-component-library';
 
-  export let exploration: QueryInstance;
+  export let exploration: SavedExploration;
   export let database: Database;
-  export let schema: SchemaEntry;
+  export let schema: Schema;
 
-  $: baseTable = $tablesStore.data.get(exploration.base_table);
+  $: baseTable = $tablesStore.tablesMap.get(exploration.base_table_oid);
 </script>
 
 <a
   class="link-container"
-  href={getExplorationPageUrl(database.name, schema.id, exploration.id)}
+  href={getExplorationPageUrl(database.id, schema.oid, exploration.id)}
 >
   <div class="container">
     <div class="horizontal-container name-and-icon">
@@ -25,7 +28,7 @@
     </div>
     {#if baseTable}
       <div class="horizontal-container">
-        <span class="meta">Based on</span>
+        <span class="meta">{$_('based_on')}</span>
         <div class="horizontal-container">
           <TableName table={baseTable} />
         </div>

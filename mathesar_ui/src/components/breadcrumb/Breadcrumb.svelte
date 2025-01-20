@@ -1,11 +1,11 @@
 <script lang="ts">
   import BreadcrumbItem from './BreadcrumbItem.svelte';
   import { getBreadcrumbItemsFromContext } from './breadcrumbUtils';
+  import DatabaseSelector from './DatabaseSelector.svelte';
   import LogoAndNameWithLink from './LogoAndNameWithLink.svelte';
 
   const items = getBreadcrumbItemsFromContext();
 
-  $: showRoot = $items.every((i) => i.type !== 'database');
   /**
    * When we have lots of items, tell each one that they can simplify
    * themselves on narrow viewports.
@@ -14,11 +14,10 @@
 </script>
 
 <div class="breadcrumb">
-  {#if showRoot}
-    <LogoAndNameWithLink href="/" />
-  {/if}
+  <LogoAndNameWithLink href="/" {hasResponsiveAbridgement} />
+  <DatabaseSelector />
   {#each $items as item}
-    <BreadcrumbItem {item} {hasResponsiveAbridgement} />
+    <BreadcrumbItem {item} />
   {/each}
 </div>
 

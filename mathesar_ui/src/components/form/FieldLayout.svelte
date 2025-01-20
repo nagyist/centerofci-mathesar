@@ -1,4 +1,6 @@
-<span class="field">
+<script lang="ts"></script>
+
+<span class="field" {...$$restProps}>
   <slot />
 </span>
 

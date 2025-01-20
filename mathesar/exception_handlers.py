@@ -5,16 +5,15 @@ from django.conf import settings
 from django.db import IntegrityError as DjangoIntegrityError
 from django.utils.encoding import force_str
 from rest_framework.views import exception_handler
-from rest_framework_friendly_errors.settings import FRIENDLY_EXCEPTION_DICT
-from sqlalchemy.exc import IntegrityError, ProgrammingError
-
-from db.types.exceptions import UnsupportedTypeException
+from sqlalchemy.exc import IntegrityError, ProgrammingError, OperationalError as sqla_OperationalError
+from psycopg.errors import OperationalError as pspg_OperationalError
+from db.deprecated.types.exceptions import UnsupportedTypeException
 from mathesar.api.exceptions.database_exceptions import (
     base_exceptions as base_api_exceptions,
     exceptions as database_api_exceptions,
 )
 from mathesar.api.exceptions.data_import_exceptions import exceptions as data_import_api_exceptions
-from mathesar.api.exceptions.error_codes import ErrorCodes
+from mathesar.api.exceptions.error_codes import ErrorCodes, FRIENDLY_EXCEPTION_DICT
 from mathesar.api.exceptions.exception_mappers import integrity_error_mapper
 from mathesar.api.exceptions.generic_exceptions.base_exceptions import get_default_api_exception
 from mathesar.errors import URLDownloadError, URLNotReachable, URLInvalidContentTypeError
@@ -26,11 +25,15 @@ exception_map = {
     ProgrammingError: lambda exc: base_api_exceptions.ProgrammingAPIException(exc),
     URLDownloadError: lambda exc: data_import_api_exceptions.URLDownloadErrorAPIException(exc),
     URLNotReachable: lambda exc: data_import_api_exceptions.URLNotReachableAPIException(exc),
-    URLInvalidContentTypeError: lambda exc: data_import_api_exceptions.URLInvalidContentTypeAPIException(exc)
+    URLInvalidContentTypeError: lambda exc: data_import_api_exceptions.URLInvalidContentTypeAPIException(exc),
+    sqla_OperationalError: lambda exc: base_api_exceptions.InvalidDBConnection(exc),
+    pspg_OperationalError: lambda exc: base_api_exceptions.InvalidDBConnection(exc)
 }
 
 
 def standardize_error_response(data):
+    if isinstance(data, dict):
+        data = [data]
     for index, error in enumerate(data):
         if 'code' in error:
             if error['code'] is not None and str(error['code']) != 'None':
@@ -92,6 +95,8 @@ def mathesar_exception_handler(exc, context):
 
 
 def is_pretty(data):
+    if isinstance(data, dict):
+        data = [data]
     if not isinstance(data, list):
         return False
     else:

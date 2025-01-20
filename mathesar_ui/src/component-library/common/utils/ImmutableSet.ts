@@ -1,4 +1,4 @@
-export default class ImmutableSet<T extends string | number | boolean | null> {
+export default class ImmutableSet<T> {
   private set: Set<T>;
 
   constructor(i?: Iterable<T>) {
@@ -32,6 +32,15 @@ export default class ImmutableSet<T extends string | number | boolean | null> {
     return this.getNewInstance(set);
   }
 
+  /**
+   * @returns a new ImmutableSet that contains only the items that are present
+   * in both this set and the other set. The order of the items in the returned
+   * set is taken from this set (not the supplied set).
+   */
+  intersect(other: { has: (v: T) => boolean }): this {
+    return this.getNewInstance([...this].filter((v) => other.has(v)));
+  }
+
   without(itemOrItems: T | T[]): this {
     const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
     const set = new Set(this.set);
@@ -43,6 +52,10 @@ export default class ImmutableSet<T extends string | number | boolean | null> {
 
   has(item: T): boolean {
     return this.set.has(item);
+  }
+
+  equals(other: Iterable<T> & { size: number }): boolean {
+    return this.size === other.size && this.union(other).size === this.size;
   }
 
   get size(): number {

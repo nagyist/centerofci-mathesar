@@ -1,23 +1,27 @@
 <script lang="ts">
-  import type { ConstraintType } from '@mathesar/api/types/tables/constraints';
+  import { _ } from 'svelte-i18n';
+
+  import type {
+    Constraint,
+    ConstraintType,
+  } from '@mathesar/api/rpc/constraints';
   import { Button, Collapsible, Help, Icon } from '@mathesar/component-library';
-  import type { Constraint } from '@mathesar/stores/table-data';
   import { iconDeleteMajor } from '@mathesar/icons';
   import { confirmDelete } from '@mathesar/stores/confirmation';
   import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
+
   import ConstraintCollapseHeader from './ConstraintCollapseHeader.svelte';
-  import NewUniqueConstraint from './NewUniqueConstraint.svelte';
-  import NewFkConstraint from './NewFkConstraint.svelte';
   import ConstraintDetails from './ConstraintDetails.svelte';
   import ForeignKeyConstraintDetails from './ForeignKeyConstraintDetails.svelte';
+  import NewFkConstraint from './NewFkConstraint.svelte';
+  import NewUniqueConstraint from './NewUniqueConstraint.svelte';
 
   export let constraintType: ConstraintType;
   export let constraints: Constraint[];
-  export let canExecuteDDL: boolean;
 
   const tabularData = getTabularDataStoreFromContext();
 
-  $: constraintsDataStore = $tabularData.constraintsDataStore;
+  $: ({ constraintsDataStore, table } = $tabularData);
 
   const CONSTRAINT_TYPE_SUPPORTING_CAN_ADD: ConstraintType[] = [
     'unique',
@@ -31,19 +35,17 @@
   let isAddingNewConstraint = false;
 
   const helpMap: Record<ConstraintType, string> = {
-    primary:
-      'A primary key constraint uniquely identifies each record in a table.',
-    foreignkey: 'A foreign key constraint links records in two tables.',
-    unique:
-      'A unique constraint ensures that each record in a column is unique.',
+    primary: $_('primary_key_help'),
+    foreignkey: $_('foreign_key_help'),
+    unique: $_('unique_key_help'),
     check: '',
     exclude: '',
   };
 
   const titleMap: Record<ConstraintType, string> = {
-    primary: 'Primary Keys',
-    foreignkey: 'Foreign Keys',
-    unique: 'Unique',
+    primary: $_('primary_keys'),
+    foreignkey: $_('foreign_keys'),
+    unique: $_('unique'),
     check: '',
     exclude: '',
   };
@@ -58,19 +60,20 @@
 
   function handleDrop(constraint: Constraint) {
     void confirmDelete({
-      identifierType: 'Constraint',
+      identifierType: $_('constraint'),
       identifierName: constraint.name,
-      body: ['Are you sure you want to proceed?'],
-      onProceed: () => constraintsDataStore.remove(constraint.id),
+      body: [$_('are_you_sure_to_proceed')],
+      onProceed: () => constraintsDataStore.remove(constraint.oid),
     });
   }
 
+  $: currentRoleOwnsTable = table.currentAccess.currentRoleOwns;
   $: canAdd =
-    CONSTRAINT_TYPE_SUPPORTING_CAN_ADD.includes(constraintType) &&
-    canExecuteDDL;
+    $currentRoleOwnsTable &&
+    CONSTRAINT_TYPE_SUPPORTING_CAN_ADD.includes(constraintType);
   $: canDrop =
-    CONSTRAINT_TYPE_SUPPORTING_CAN_DROP.includes(constraintType) &&
-    canExecuteDDL;
+    $currentRoleOwnsTable &&
+    CONSTRAINT_TYPE_SUPPORTING_CAN_DROP.includes(constraintType);
 </script>
 
 <div class="constraint-type-section">
@@ -81,7 +84,7 @@
     </span>
     {#if canAdd}
       <Button appearance="plain-primary" size="small" on:click={addConstraint}>
-        Add
+        {$_('add')}
       </Button>
     {/if}
   </span>
@@ -94,7 +97,7 @@
       {/if}
     </div>
   {/if}
-  {#each constraints as constraint (constraint.id)}
+  {#each constraints as constraint (constraint.oid)}
     <Collapsible triggerAppearance="ghost">
       <span slot="header">
         <ConstraintCollapseHeader {constraint} />
@@ -120,7 +123,11 @@
     </Collapsible>
   {:else}
     {#if !isAddingNewConstraint}
-      <span class="null">No {titleMap[constraintType]} Constraints</span>
+      <span class="null">
+        {$_('no_type_constraints', {
+          values: { constraintType: titleMap[constraintType] },
+        })}
+      </span>
     {/if}
   {/each}
 </div>
@@ -135,7 +142,7 @@
     }
 
     :global(.collapsible-content) {
-      padding-left: 1rem;
+      padding-left: var(--size-x-large);
     }
 
     .null {
@@ -148,14 +155,14 @@
     justify-content: space-between;
     align-items: center;
     font-size: var(--text-size-large);
-
+    font-weight: var(--font-weight-medium);
     border-bottom: 1px solid var(--slate-200);
-    padding: 0.25rem;
-    margin-bottom: 0.5rem;
+    min-height: 2.5rem;
+    margin-bottom: var(--size-xx-small);
   }
 
   .add-constraint {
-    padding: 0.5rem;
+    padding: var(--size-base);
     border: 1px solid var(--slate-300);
     border-radius: var(--border-radius-m);
   }
