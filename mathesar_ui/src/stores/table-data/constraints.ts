@@ -1,33 +1,25 @@
-import { writable, get as getStoreValue, derived } from 'svelte/store';
 import {
-  deleteAPI,
-  getAPI,
-  postAPI,
-  States,
-} from '@mathesar/api/utils/requestUtils';
-import type {
-  Writable,
-  Updater,
-  Subscriber,
-  Unsubscriber,
-  Readable,
+  type Readable,
+  type Subscriber,
+  type Unsubscriber,
+  type Updater,
+  type Writable,
+  derived,
+  get as getStoreValue,
+  writable,
 } from 'svelte/store';
-import type { PaginatedResponse } from '@mathesar/api/utils/requestUtils';
-import type { CancellablePromise } from '@mathesar-component-library';
-import type { DBObjectEntry } from '@mathesar/AppTypes';
-import type { Constraint as ApiConstraint } from '@mathesar/api/types/tables/constraints';
-import type { Column } from '@mathesar/api/types/tables/columns';
 
-/**
- * When representing a constraint on the front end, we directly use the object
- * schema from the API.
- *
- * In https://github.com/centerofci/mathesar/pull/776#issuecomment-963514261 we
- * had some discussion about converting the `columns` field to a Set instead of
- * an Array, but we chose to keep it as an Array because we didn't need the
- * performance gains from a Set here.
- */
-export type Constraint = ApiConstraint;
+import { States } from '@mathesar/api/rest/utils/requestUtils';
+import { api } from '@mathesar/api/rpc';
+import type { Column } from '@mathesar/api/rpc/columns';
+import type {
+  Constraint,
+  ConstraintRecipe,
+} from '@mathesar/api/rpc/constraints';
+import type { Database } from '@mathesar/models/Database';
+import type { Table } from '@mathesar/models/Table';
+import type { ShareConsumer } from '@mathesar/utils/shares';
+import type { CancellablePromise } from '@mathesar-component-library';
 
 export interface ConstraintsData {
   state: States;
@@ -71,32 +63,17 @@ function uniqueColumns(
   );
 }
 
-function api(url: string) {
-  return {
-    get() {
-      return getAPI<PaginatedResponse<Constraint>>(`${url}?limit=500`);
-    },
-    add(constraintDetails: Partial<Constraint>) {
-      return postAPI<Partial<Constraint>>(url, constraintDetails);
-    },
-    remove(constraintId: Constraint['id']) {
-      return deleteAPI(`${url}${constraintId}/`);
-    },
-  };
-}
-
 export class ConstraintsDataStore implements Writable<ConstraintsData> {
-  private parentId: DBObjectEntry['id'];
+  private apiContext: {
+    database_id: number;
+    table_oid: Table['oid'];
+  };
 
   private store: Writable<ConstraintsData>;
 
-  private promise:
-    | CancellablePromise<PaginatedResponse<ApiConstraint>>
-    | undefined;
+  private promise: CancellablePromise<Constraint[]> | undefined;
 
-  private api: ReturnType<typeof api>;
-
-  private fetchCallback: (storeData: ConstraintsData) => void;
+  readonly shareConsumer?: ShareConsumer;
 
   /**
    * A set of column ids representing columns which have single-column unique
@@ -107,18 +84,22 @@ export class ConstraintsDataStore implements Writable<ConstraintsData> {
    */
   uniqueColumns: Readable<Set<number>>;
 
-  constructor(
-    parentId: number,
-    fetchCallback: (storeData: ConstraintsData) => void = () => {},
-  ) {
-    this.parentId = parentId;
+  constructor({
+    database,
+    table,
+    shareConsumer,
+  }: {
+    database: Pick<Database, 'id'>;
+    table: Pick<Table, 'oid'>;
+    shareConsumer?: ShareConsumer;
+  }) {
+    this.apiContext = { database_id: database.id, table_oid: table.oid };
+    this.shareConsumer = shareConsumer;
     this.store = writable({
       state: States.Loading,
       constraints: [],
     });
     this.uniqueColumns = uniqueColumns(this.store);
-    this.fetchCallback = fetchCallback;
-    this.api = api(`/api/db/v0/tables/${this.parentId}/constraints/`);
     void this.fetch();
   }
 
@@ -146,16 +127,10 @@ export class ConstraintsDataStore implements Writable<ConstraintsData> {
 
     try {
       this.promise?.cancel();
-      this.promise = this.api.get();
-
-      const response = await this.promise;
-
-      const storeData: ConstraintsData = {
-        state: States.Done,
-        constraints: response.results,
-      };
+      this.promise = api.constraints.list(this.apiContext).run();
+      const constraints = await this.promise;
+      const storeData: ConstraintsData = { state: States.Done, constraints };
       this.set(storeData);
-      this.fetchCallback?.(storeData);
       return storeData;
     } catch (err) {
       this.set({
@@ -169,16 +144,17 @@ export class ConstraintsDataStore implements Writable<ConstraintsData> {
     return undefined;
   }
 
-  async add(
-    constraintDetails: Partial<Constraint>,
-  ): Promise<Partial<Constraint>> {
-    const constraint = await this.api.add(constraintDetails);
+  async add(recipe: ConstraintRecipe): Promise<void> {
+    await api.constraints
+      .add({ ...this.apiContext, constraint_def_list: [recipe] })
+      .run();
     await this.fetch();
-    return constraint;
   }
 
   async remove(constraintId: number): Promise<void> {
-    await this.api.remove(constraintId);
+    await api.constraints
+      .delete({ ...this.apiContext, constraint_oid: constraintId })
+      .run();
     await this.fetch();
   }
 
@@ -200,7 +176,7 @@ export class ConstraintsDataStore implements Writable<ConstraintsData> {
       return;
     }
     if (shouldBeUnique) {
-      await this.add({ type: 'unique', columns: [column.id] });
+      await this.add({ type: 'u', columns: [column.id] });
       return;
     }
     // Technically, one column can have two unique constraints applied on it,
@@ -211,8 +187,10 @@ export class ConstraintsDataStore implements Writable<ConstraintsData> {
       [column.id],
     ).filter((c) => c.type === 'unique');
     await Promise.all(
-      uniqueConstraintsForColumn.map((constraint) =>
-        this.api.remove(constraint.id),
+      uniqueConstraintsForColumn.map((c) =>
+        api.constraints
+          .delete({ ...this.apiContext, constraint_oid: c.oid })
+          .run(),
       ),
     );
     await this.fetch();

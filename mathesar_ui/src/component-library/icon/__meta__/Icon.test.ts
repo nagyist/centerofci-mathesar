@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
-import { render } from '@testing-library/svelte';
 import { faCat } from '@fortawesome/free-solid-svg-icons';
+import { render } from '@testing-library/svelte';
+
 import Icon from '../Icon.svelte';
 
 test('renders icon with default role as presentation', () => {
@@ -25,8 +26,7 @@ test('renders icon with size prop as height and width', () => {
 
   const icon = getByRole('presentation');
   expect(icon).toBeInTheDocument();
-  expect(icon).toHaveAttribute('width', '20px');
-  expect(icon).toHaveAttribute('height', '20px');
+  expect(icon).toHaveAttribute('style', 'font-size: 20px;');
 });
 
 test('renders icon based on passed props', () => {

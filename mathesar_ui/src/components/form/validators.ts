@@ -1,4 +1,6 @@
 import { get } from 'svelte/store';
+import { _ } from 'svelte-i18n';
+
 import type { FieldStore, FieldValue, ValuedField } from './field';
 
 export type Filled<T> = Exclude<T, null | undefined>;
@@ -52,73 +54,63 @@ type FilledFieldValue<F> = FieldValue<F> extends infer T | undefined | null
   : never;
 
 export function required(
-  msg = 'Value cannot be empty.',
+  msg = get(_)('value_cannot_be_empty'),
 ): ValidationFn<unknown> {
-  return (v) => (valueIsFilled(v) ? valid() : invalid(msg));
+  return validIf((v) => valueIsFilled(v), msg);
+}
+
+function collectionContainsValue<T>(c: Array<T> | Set<T>, v: T) {
+  return Array.isArray(c) ? c.includes(v) : c.has(v);
 }
 
 export function uniqueWith<T>(
-  values: T[],
-  msg = 'This value already exists.',
+  collection: Array<T> | Set<T>,
+  msg = get(_)('value_already_exists'),
 ): ValidationFn<T> {
-  return (v) => (values.includes(v) ? invalid(msg) : valid());
+  return invalidIf((v) => collectionContainsValue(collection, v), msg);
 }
 
-export function min(
-  lowerBound: number,
-  msg: string | undefined = undefined,
-): ValidationFn<number | null | undefined> {
-  return (v) =>
-    v === null || v === undefined || v >= lowerBound
-      ? valid()
-      : invalid(msg ?? `Value must be at least ${lowerBound}.`);
+export function min(lowerBound: number, msg?: string): ValidationFn<number> {
+  return validIf(
+    (v) => v >= lowerBound,
+    msg ?? get(_)('value_lowerbound_error', { values: { lowerBound } }),
+  );
 }
 
-export function max(
-  upperBound: number,
-  msg: string | undefined = undefined,
-): ValidationFn<number | null | undefined> {
-  return (v) =>
-    v === null || v === undefined || v <= upperBound
-      ? valid()
-      : invalid(msg ?? `Value must be at most ${upperBound}.`);
+export function max(upperBound: number, msg?: string): ValidationFn<number> {
+  return validIf(
+    (v) => v <= upperBound,
+    msg ?? get(_)('value_upperbound_error', { values: { upperBound } }),
+  );
 }
 
-export function matchRegexAllowNullUndefined(
-  regex: RegExp,
-  msg = 'The specified value is invalid.',
-): ValidationFn<string | undefined | null> {
-  return (v) =>
-    v === null || v === undefined || v.match(regex) ? valid() : invalid(msg);
+export function matchRegex(regex: RegExp, msg: string): ValidationFn<string> {
+  return validIf((v) => !!v.match(regex), msg);
 }
 
-export function validateLength(
-  maxInclusive: number,
-  msg: string | undefined = undefined,
-): ValidationFn<string | undefined | null> {
-  return (v) =>
-    v === null || v === undefined || v.length <= maxInclusive
-      ? valid()
-      : invalid(
-          msg ?? `Length must be equal to or lesser than ${maxInclusive}.`,
-        );
+export function maxLength(limit: number, msg?: string): ValidationFn<string> {
+  return validIf(
+    (v) => v.length <= limit,
+    msg ?? get(_)('value_maxlength_error', { values: { limit } }),
+  );
 }
 
-function isEmailInvalid(v: string): boolean {
-  return !v
-    .toLowerCase()
-    .match(
-      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-    );
+/**
+ * From https://stackoverflow.com/a/46181/895563
+ */
+const EMAIL_PATTERN =
+  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+export function isEmail(
+  msg = get(_)('email_address_invalid'),
+): ValidationFn<string> {
+  return validIf((v) => !!v.toLowerCase().match(EMAIL_PATTERN), msg);
 }
 
-export function validateEmailAllowEmpty(
-  msg = 'The email address is invalid.',
-): ValidationFn<string | undefined | null> {
-  return (v) =>
-    v === null || v === undefined || v === '' || !isEmailInvalid(v)
-      ? valid()
-      : invalid(msg);
+export function isInPortRange(
+  msg = get(_)('port_invalid'),
+): ValidationFn<number> {
+  return validIf((v) => v <= 65535 && v >= 0, msg);
 }
 
 export function getErrors<T>({
@@ -130,17 +122,14 @@ export function getErrors<T>({
   isRequired: boolean;
   validators?: (ValidationFn<T> | ValidationFn<Filled<T>>)[];
 }): string[] {
-  if (isRequired) {
-    const outcome = required()(value);
-    if (outcome.type === 'invalid') {
-      return [outcome.errorMsg];
-    }
+  if (!valueIsFilled(value)) {
+    return isRequired ? [get(_)('value_cannot_be_empty')] : [];
   }
   if (!validators) {
     return [];
   }
-  // We know value will be filled here because we already returned if the
-  // `required` validator failed.
+  // We know value will be filled here because we already returned if
+  // `valueIsFilled` gave false.
   const filledValue = value as Filled<T>;
   return validators
     .map((fn) => fn(filledValue))

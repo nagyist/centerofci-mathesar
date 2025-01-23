@@ -1,12 +1,14 @@
 <script lang="ts">
-  import type { TableEntry } from '@mathesar/api/types/tables';
-  import type { Column } from '@mathesar/api/types/tables/columns';
+  import { _ } from 'svelte-i18n';
+
+  import type { Column } from '@mathesar/api/rpc/columns';
+  import WarningBox from '@mathesar/components/message-boxes/WarningBox.svelte';
   import TableName from '@mathesar/components/TableName.svelte';
-  import { currentDbAbstractTypes } from '@mathesar/stores/abstract-types';
+  import type { Table } from '@mathesar/models/Table';
   import {
     Meta,
-    setTabularDataStoreInContext,
     TabularData,
+    setTabularDataStoreInContext,
   } from '@mathesar/stores/table-data';
   import MiniActionsPane from '@mathesar/systems/table-view/actions-pane/MiniActionsPane.svelte';
   import TableView from '@mathesar/systems/table-view/TableView.svelte';
@@ -22,27 +24,36 @@
   });
 
   export let recordPk: string;
-  export let table: Pick<TableEntry, 'id' | 'name'>;
+  export let table: Table;
   export let fkColumn: Pick<Column, 'id' | 'name'>;
 
-  $: abstractTypesMap = $currentDbAbstractTypes.data;
   $: tabularData = new TabularData({
-    id: table.id,
-    abstractTypesMap,
+    database: table.schema.database,
+    table,
     meta,
     contextualFilters: new Map([[fkColumn.id, recordPk]]),
   });
   $: tabularDataStore.set(tabularData);
+  $: ({ currentRolePrivileges } = table.currentAccess);
+  $: canViewTable = $currentRolePrivileges.has('SELECT');
 </script>
 
 <div class="table-widget">
   <div class="top">
-    <h3><TableName {table} /></h3>
-    <MiniActionsPane />
+    <h3 class="bold-header"><TableName {table} /></h3>
+    {#if canViewTable}
+      <MiniActionsPane />
+    {/if}
   </div>
 
   <div class="results">
-    <TableView context="widget" />
+    {#if canViewTable}
+      <TableView context="widget" {table} />
+    {:else}
+      <WarningBox fullWidth>
+        {$_('no_privileges_view_table')}
+      </WarningBox>
+    {/if}
   </div>
 </div>
 
@@ -55,9 +66,6 @@
     align-items: center;
 
     overflow: hidden;
-    > h3 {
-      font-weight: 500;
-    }
   }
   .top > :global(*) {
     overflow: hidden;

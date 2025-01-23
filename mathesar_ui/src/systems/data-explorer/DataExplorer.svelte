@@ -1,20 +1,23 @@
 <script lang="ts">
-  import { Tutorial } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
   import { queries } from '@mathesar/stores/queries';
-  import type QueryManager from './QueryManager';
-  import InputSidebar from './input-sidebar/InputSidebar.svelte';
-  import ResultPane from './result-pane/ResultPane.svelte';
-  import ExplorationInspector from './exploration-inspector/ExplorationInspector.svelte';
-  import type { ColumnWithLink } from './utils';
+  import { Tutorial } from '@mathesar-component-library';
+
   import ActionsPane from './ActionsPane.svelte';
+  import { WithExplorationInspector } from './exploration-inspector';
+  import WithInputSidebar from './input-sidebar/WithInputSidebar.svelte';
+  import type QueryManager from './QueryManager';
+  import ExplorationResults from './result-pane/ExplorationResults.svelte';
+  import StatusBar from './StatusBar.svelte';
+  import type { ColumnWithLink } from './utils';
 
   export let queryManager: QueryManager;
   export let linkCollapsibleOpenState: Record<ColumnWithLink['id'], boolean> =
     {};
-  export let canEditMetadata: boolean;
 
   $: ({ query } = queryManager);
-  $: hasNoColumns = $query.initial_columns.length === 0;
+  $: hasColumns = !!$query.initial_columns.length;
 
   let isInspectorOpen = true;
 </script>
@@ -22,45 +25,47 @@
 <div class="data-explorer">
   <ActionsPane
     {queryManager}
-    {canEditMetadata}
     bind:linkCollapsibleOpenState
     bind:isInspectorOpen
     on:close
   />
-  {#if !$query.base_table}
+  {#if !$query.base_table_oid}
     <div class="initial-content">
       {#if $queries.requestStatus.state === 'success' && $queries.data.size === 0}
         <div class="tutorial-holder">
           <Tutorial>
             <span slot="title">
-              Create and Share Explorations of Your Data
+              {$_('create_share_explorations_of_your_data')}
             </span>
             <span slot="body">
-              Use Data Explorer to analyze and share your data. Explorations are
-              based on tables in your schema, to get started choose a table and
-              start adding columns and transformations.
+              {$_('create_exploration_empty_state_help')}
             </span>
           </Tutorial>
         </div>
       {/if}
       <div class="help-text">
-        Get started by selecting a table and adding columns
+        {$_('get_started_by_adding_table_and_columns')}
       </div>
     </div>
   {:else}
     <div class="content-pane">
-      <InputSidebar {queryManager} {linkCollapsibleOpenState} />
-      {#if hasNoColumns}
-        <div class="help-text">Get started by adding columns from the left</div>
-      {:else}
-        <ResultPane queryHandler={queryManager} />
-        {#if isInspectorOpen}
-          <ExplorationInspector
+      <WithInputSidebar {queryManager} {linkCollapsibleOpenState}>
+        {#if !hasColumns}
+          <div class="help-text">
+            {$_('get_started_by_adding_columns_from_left')}
+          </div>
+        {:else}
+          <WithExplorationInspector
+            {isInspectorOpen}
             queryHandler={queryManager}
-            {canEditMetadata}
             on:delete
-          />
+          >
+            <ExplorationResults queryHandler={queryManager} />
+          </WithExplorationInspector>
         {/if}
+      </WithInputSidebar>
+      {#if hasColumns}
+        <StatusBar queryHandler={queryManager} />
       {/if}
     </div>
   {/if}
@@ -73,9 +78,8 @@
     height: 100%;
 
     .help-text {
-      display: inline-block;
-      margin-left: auto;
-      margin-right: auto;
+      padding: 0 1rem;
+      text-align: center;
       font-size: var(--text-size-x-large);
       color: var(--slate-500);
     }
@@ -100,12 +104,10 @@
     }
 
     .content-pane {
-      display: flex;
+      display: grid;
+      grid-template: 1fr auto / 1fr;
       overflow: hidden;
       overflow-x: auto;
-      --input-pane-width: 25.8rem;
-      --exploration-inspector-width: 22.9rem;
-
       .help-text {
         margin-top: 10rem;
       }

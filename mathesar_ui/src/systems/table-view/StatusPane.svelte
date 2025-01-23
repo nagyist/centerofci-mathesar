@@ -1,39 +1,30 @@
 <script lang="ts">
-  import {
-    getPaginationPageCount,
-    Button,
-    Icon,
-  } from '@mathesar-component-library';
-  import { States } from '@mathesar/api/utils/requestUtils';
-  import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
+  import { _ } from 'svelte-i18n';
+
+  import { States } from '@mathesar/api/rest/utils/requestUtils';
   import PaginationGroup from '@mathesar/components/PaginationGroup.svelte';
   import RefreshButton from '@mathesar/components/RefreshButton.svelte';
   import { iconAddNew } from '@mathesar/icons';
-  import { labeledCount, pluralize } from '@mathesar/utils/languageUtils';
-  import { getUserProfileStoreFromContext } from '@mathesar/stores/userProfile';
-  import { currentDatabase } from '@mathesar/stores/databases';
-  import { currentSchema } from '@mathesar/stores/schemas';
+  import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
+  import {
+    Button,
+    Icon,
+    getPaginationPageCount,
+  } from '@mathesar-component-library';
 
   const tabularData = getTabularDataStoreFromContext();
-  const userProfile = getUserProfileStoreFromContext();
 
-  $: database = $currentDatabase;
-  $: schema = $currentSchema;
-  $: canEditTableRecords = !!$userProfile?.hasPermission(
-    { database, schema },
-    'canEditTableRecords',
-  );
-
-  export let context: 'page' | 'widget' = 'page';
+  export let context: 'page' | 'widget' | 'shared-consumer-page' = 'page';
 
   $: ({
+    table,
     recordsData,
     meta,
     isLoading,
     columnsDataStore,
     constraintsDataStore,
-    selection,
   } = $tabularData);
+  $: ({ currentRolePrivileges } = table.currentAccess);
   $: ({ pagination } = meta);
   $: ({ size: pageSize, leftBound, rightBound } = $pagination);
   $: ({ totalCount, state, newRecords } = recordsData);
@@ -45,7 +36,8 @@
     $columnsFetchStatus?.state === 'failure' ||
     recordState === States.Error ||
     $constraintsDataStore.state === States.Error;
-  $: hasNewRecordButton = context === 'page' && canEditTableRecords;
+  $: hasNewRecordButton =
+    context !== 'widget' && $currentRolePrivileges.has('INSERT');
   $: refreshButtonState = (() => {
     let buttonState: 'loading' | 'error' | undefined = undefined;
     if ($isLoading) {
@@ -66,6 +58,7 @@
   class="status-pane"
   class:context-widget={context === 'widget'}
   class:context-page={context === 'page'}
+  class:context-shared-consumer-page={context === 'shared-consumer-page'}
 >
   <div class="status-pane-items-section">
     {#if hasNewRecordButton}
@@ -73,24 +66,30 @@
         disabled={$isLoading}
         size="medium"
         appearance="primary"
-        on:click={() => {
-          recordsData.addEmptyRecord();
-          selection.selectAndActivateFirstDataEntryCellInLastRow();
-        }}
+        on:click={() => $tabularData.addEmptyRecord()}
       >
         <Icon {...iconAddNew} />
-        <span>New Record</span>
+        <span>{$_('new_record')}</span>
       </Button>
     {/if}
     <div class="record-count">
       {#if pageCount > 0 && $totalCount}
-        Showing {leftBound} to {max}
+        {$_('showing_n_to_m_of_total_records', {
+          values: {
+            leftBound,
+            rightBound: max,
+            totalCount: $totalCount,
+          },
+        })}
         {#if $newRecords.length > 0}
-          (+ {$newRecords.length} new {pluralize($newRecords, 'records')})
+          ({$_('count_new_records', {
+            values: {
+              count: $newRecords.length,
+            },
+          })})
         {/if}
-        of {labeledCount($totalCount, 'records')}
       {:else if recordState !== States.Loading}
-        No records found
+        {$_('no_records_found')}
       {/if}
     </div>
   </div>
@@ -108,7 +107,7 @@
 
 <style lang="scss">
   .status-pane {
-    padding: 0.5rem;
+    padding: var(--status-bar-padding);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -117,7 +116,8 @@
     flex-shrink: 0;
     flex-basis: 32px;
 
-    &.context-page {
+    &.context-page,
+    &.context-shared-consumer-page {
       background-color: var(--slate-100);
     }
 

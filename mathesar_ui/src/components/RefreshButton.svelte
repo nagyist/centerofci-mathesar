@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { Button, Icon, iconError } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
   import { iconRefresh } from '@mathesar/icons';
+  import { Button, Icon, iconError } from '@mathesar-component-library';
 
   export let state: 'loading' | 'error' | undefined = undefined;
 
@@ -18,11 +20,11 @@
   <Icon {...isError && !isLoading ? iconError : iconRefresh} spin={isLoading} />
   <span>
     {#if isLoading}
-      Loading
+      {$_('loading')}
     {:else if isError}
-      Retry
+      {$_('retry')}
     {:else}
-      Refresh
+      {$_('refresh')}
     {/if}
   </span>
 </Button>

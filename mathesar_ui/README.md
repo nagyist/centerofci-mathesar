@@ -1,14 +1,14 @@
-# Mathesar UI
+# Mathesar front end development
 
 This directory contains the frontend code for Mathesar. However, part of the frontend setup is based on pre-rendered json which is done through django templates. We use Svelte as the frontend library, Scss for styling, and Vite for dev tooling.
 
 ## Development setup
 
-Refer the [main README file](../README.md) on how to spin up the entire dev setup for Mathesar as containers.
+First make sure you [have Mathesar running locally](../DEVELOPER_GUIDE.md#local-development-setup).
 
 ### Option 1: Setup with containers (recommended)
 
-Once the containers are running, the changes made in frontend code will reflect immediately through HMR. You do not need any additional dev setup.
+Once the containers are running, the changes made in frontend code will reflect immediately through [hot module replacement](https://vitejs.dev/guide/features.html#hot-module-replacement). You do not need any additional dev setup.
 
 #### IDE configuration
 
@@ -16,7 +16,7 @@ There is one catch when running in containers. Your IDEs will not be able to per
 
 Options:
 
-- Run `npm install` locally (or copy the `node_modules` folder from the container to your host file system). This will not be used for anything except for helping the IDEs provide intellisense.
+- Run `npm ci` locally (or copy the `node_modules` folder from the container to your host file system). This will not be used for anything except for helping the IDEs provide intellisense.
 
   If you choose this approach, make sure that you're using the same version of node and npm in your local as it is in the container, and that `package-lock.json` file is not modified before committing.
 
@@ -29,7 +29,7 @@ Options:
 If you don't want to use Docker, you can run the front end locally.
 
 1. `cd mathesar_ui`
-1. `npm install`
+1. `npm ci`
 1. `npm run dev`
 
    This will start a vite server at port 3000. The vite client and main files are referenced by our server rendered html files. Refer [backend integration in vite docs](https://vitejs.dev/guide/backend-integration.html).
@@ -40,15 +40,13 @@ Caveats
 
 - The rest of the documentation within this README assumes a Docker setup. If you use a local setup instead, you'll need to interpret the remaining documentation for your specific setup.
 
-## Developing on Windows
+## Architectural overview
 
-- Hot module replacement does not work well with WSL when the project is present within a Windows filesystem, as mentioned in [this issue](https://github.com/microsoft/WSL/issues/4739).
+See [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-- The simplest way to get this to work (and the one we advise) is to move the project to a Linux filesystem. This can be achieved by cloning the repo within the WSL shell in a Linux filesystem.
+## Code standards
 
-- If you have to work in the Windows filesystem, you could configure Vite to poll files to identify changes, as mentioned in [this issue](https://github.com/vitejs/vite/issues/1153#issuecomment-785467271) and in the [Vite documentation](https://vitejs.dev/config/#server-watch). However, this is a resource intensive process so we advise the previous option instead.
-
-- [This issue](https://github.com/centerofci/mathesar/issues/570) keeps track of problems encountered by Mathesar developers using Windows for local development.
+See [STANDARDS.md](./STANDARDS.md)
 
 ## Formatting
 
@@ -95,6 +93,16 @@ We use [ESLint](https://eslint.org/) to help spot more complex issues within cod
 
   ```
   docker exec -it -w /code/mathesar_ui mathesar_service_dev npx eslint src/App.svelte
+  ```
+
+### Auto-fixing linting errors
+
+ESLint can fix some errors automatically. In particular, we rely on ESLint to auto-sort our JavaScript import statements, so if you don't auto-fix your linting errors before submitting a PR, you're likely to get some CI errors in your PR which complain about out-of-order import statements.
+
+- Auto-fix all possible linting errors:
+
+  ```
+  docker exec -it -w /code/mathesar_ui mathesar_service_dev npm run lint-fix
   ```
 
 ## Testing
@@ -158,6 +166,21 @@ We use [Vitest](https://vitest.dev/) to run our unit tests, and we use [Testing 
 - Deciding _what to test_, and _how_ can be an art! You generally want to try poking and the boundaries and edge cases. We don't have to go crazy with all sorts of assertions for every scenario. Just a few will do. We're not trying to test every possible input -- just some of the important ones.
 - If you find a bug, it's great practice to write a test that fails before even beginning work on the fix.
 
+## Components
+
+- The `src/component-library` directory contains general-purpose components which will eventually be spun off into its own package, separate from Mathesar.
+- See the [Components README](./src/component-library/README.md) for more details.
+
+## Live reloading on Windows
+
+- Hot module replacement does not work well with WSL when the project is present within a Windows filesystem, as mentioned in [this issue](https://github.com/microsoft/WSL/issues/4739).
+
+- The simplest way to get this to work (and the one we advise) is to move the project to a Linux filesystem. This can be achieved by cloning the repo within the WSL shell in a Linux filesystem.
+
+- If you have to work in the Windows filesystem, you could configure Vite to poll files to identify changes, as mentioned in [this issue](https://github.com/vitejs/vite/issues/1153#issuecomment-785467271) and in the [Vite documentation](https://vitejs.dev/config/#server-watch). However, this is a resource intensive process so we advise the previous option instead.
+
+- [This issue](https://github.com/centerofci/mathesar/issues/570) keeps track of problems encountered by Mathesar developers using Windows for local development.
+
 ## Adding/Removing packages
 
 If you want to add or remove packages, or basically run any npm action, **always do it from within the container**. Never do it from your local node setup, since it may modify the `package-lock.json` in ways we would not want it to.
@@ -176,46 +199,29 @@ If you want to add or remove packages, or basically run any npm action, **always
    Dockerfile  jsconfig.json  package-lock.json  public  vite.config.js
    README.md   node_modules   package.json       src
 
-   root@c273da65c52d:/code/mathesar_ui$ npm install <package>
+   root@c273da65c52d:/code/mathesar_ui# npm install <package>
 
-   root@c273da65c52d:/code/mathesar_ui$ npm uninstall <package>
+   root@c273da65c52d:/code/mathesar_ui# npm uninstall <package>
    ```
 
-1. Before committing the `package-lock.json` file, run `npm install --unsafe-perm` in the container.
+## Fixing npm audit failures
 
-   ```bash
-   root@c273da65c52d:/code/mathesar_ui$ npm install --unsafe-perm
-   ```
+Fixing npm audit failures is restricted only to [maintainers](https://wiki.mathesar.org/en/team). If you are facing this, please notify the maintainers on our [Matrix channels](https://wiki.mathesar.org/en/community), or raise an issue on GitHub.
 
-   Reason:
+If the `audit` check on your pull request fails, here are the steps to fix it:
 
-   - We force resolutions of certain packages which have vulnerabilities, using the [`npm-force-resolutions` package](https://www.npmjs.com/package/npm-force-resolutions).
-   - These resolutions are mentioned in the package.json file. They are only to be used when nested dependencies have severe vulnerabilities but our direct dependencies do not use the vulnerability free versions. Extra care should be taken here to make sure the direct dependencies do not break.
-   - This needs to run during the `preinstall` lifecycle.
-   - After every package action (add/remove), the `npm install` command needs to be run additionally to enforce these resolutions.
-   - Since our node instance runs as root in the container, the [`--unsafe-perm` flag](https://docs.npmjs.com/cli/v6/using-npm/config#unsafe-perm) needs to be specified.
+- If the audit failure indicates that the issues are auto-fixable, the following commands need to be run to fix them:
 
-## Components
-
-- The `src/component-library` directory contains general-purpose components which will eventually be spun off into its own package, separate from Mathesar.
-- See the [Components README](./src/component-library/README.md) for more details.
-
-### Storybook
-
-We use [Storybook](https://storybook.js.org/) to develop and document our components.
-
-- **Start** Storybook in dev mode with:
-
-  ```bash
-  docker exec -it -w /code/mathesar_ui mathesar_service_dev npm run storybook
+  ```
+  npm audit fix
+  npm install
   ```
 
-- **Build** Storybook with:
+  Please make sure to run these within the container only. If you are running Mathesar locally, without Docker, make sure you use the same node and npm versions.
 
-  ```bash
-  docker exec -it -w /code/mathesar_ui mathesar_service_dev npm run build-storybook
-  ```
+- If the issues are non auto-fixable, identify the packages that are vulnerable.
 
-## Coding standards
-
-See https://wiki.mathesar.org/en/engineering/standards/frontend
+  - If they are directly used packages, update their versions.
+  - If they are dependencies of packages used by us (most common), update the parent packages.
+  - Most often, newer parent packages may not have been released yet. In which case, we can use the 'resolutions' field in package.json to force the version of packages. Make sure to only update it to the closest non-vulnerable minor release, in this case.
+  - Force resolving dependencies to a particular version should only be done when the vulnerabilities are not false positives. [This article](https://overreacted.io/npm-audit-broken-by-design/) by Dan Abramov from the React team, gives a good explanation on why most reported vulnerabilities are false positives.

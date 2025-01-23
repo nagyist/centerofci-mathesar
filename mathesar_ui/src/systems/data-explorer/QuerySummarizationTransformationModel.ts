@@ -1,10 +1,16 @@
-import type { QueryInstanceSummarizationTransformation } from '@mathesar/api/types/queries';
+import { get } from 'svelte/store';
+import { _ } from 'svelte-i18n';
+
+import type {
+  QueryInstanceSummarizationTransformation,
+  QuerySummarizationFunctionId,
+} from '@mathesar/api/rpc/explorations';
 import { ImmutableMap } from '@mathesar-component-library';
 
 export interface QuerySummarizationAggregationEntry {
   inputAlias: string;
   outputAlias: string;
-  function: 'distinct_aggregate_to_array' | 'count';
+  function: QuerySummarizationFunctionId;
 }
 
 export interface QuerySummarizationGroupingEntry {
@@ -20,12 +26,12 @@ export interface QuerySummarizationTransformationEntry {
   aggregations: ImmutableMap<string, QuerySummarizationAggregationEntry>;
 }
 
-export default class QuerySummarizationTransformationModel
+export class QuerySummarizationTransformationModel
   implements QuerySummarizationTransformationEntry
 {
   type = 'summarize' as const;
 
-  name = 'Summarization' as const;
+  name = get(_)('summarization');
 
   columnIdentifier;
 

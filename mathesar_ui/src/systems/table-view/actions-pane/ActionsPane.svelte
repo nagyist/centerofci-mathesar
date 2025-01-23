@@ -1,24 +1,45 @@
 <script lang="ts">
-  import { Button, Icon } from '@mathesar-component-library';
-  import type { TableEntry } from '@mathesar/api/types/tables';
+  import { _ } from 'svelte-i18n';
+
+  import { getQueryStringFromParams } from '@mathesar/api/rest/utils/requestUtils';
   import EntityPageHeader from '@mathesar/components/EntityPageHeader.svelte';
   import ModificationStatus from '@mathesar/components/ModificationStatus.svelte';
-  import { iconInspector, iconTable } from '@mathesar/icons';
+  import { iconExport, iconInspector, iconTable } from '@mathesar/icons';
+  import { tableInspectorVisible } from '@mathesar/stores/localStorage';
   import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
+  import {
+    AnchorButton,
+    Button,
+    Icon,
+    Tooltip,
+  } from '@mathesar-component-library';
+
   import FilterDropdown from './record-operations/filter/FilterDropdown.svelte';
   import GroupDropdown from './record-operations/group/GroupDropdown.svelte';
   import SortDropdown from './record-operations/sort/SortDropdown.svelte';
 
+  type TableActionsContext = 'page' | 'shared-consumer-page';
+
   const tabularData = getTabularDataStoreFromContext();
 
-  export let table: Pick<TableEntry, 'name' | 'description'>;
+  export let context: TableActionsContext = 'page';
 
-  $: ({ meta, isLoading, display } = $tabularData);
+  $: ({ table, meta, isLoading } = $tabularData);
+  $: ({ currentRolePrivileges } = table.currentAccess);
   $: ({ filtering, sorting, grouping, sheetState } = meta);
-  $: ({ isTableInspectorVisible } = display);
+
+  $: isSelectable = $currentRolePrivileges.has('SELECT');
+  $: exportLinkParams = getQueryStringFromParams({
+    database_id: table.schema.database.id,
+    table_oid: table.oid,
+    ...$sorting.recordsRequestParamsIncludingGrouping($grouping),
+    ...$filtering.recordsRequestParams(),
+  });
+
+  const canViewLinkedEntities = true;
 
   function toggleTableInspector() {
-    isTableInspectorVisible.set(!$isTableInspectorVisible);
+    tableInspectorVisible.update((v) => !v);
   }
 </script>
 
@@ -29,26 +50,55 @@
     icon: iconTable,
   }}
 >
-  <div class="quick-access">
-    <FilterDropdown {filtering} />
-    <SortDropdown {sorting} />
-    <GroupDropdown {grouping} />
-  </div>
+  {#if isSelectable}
+    <div class="quick-access">
+      <FilterDropdown {filtering} {canViewLinkedEntities} />
+      <SortDropdown {sorting} />
+      <GroupDropdown {grouping} />
+    </div>
+  {/if}
 
-  <ModificationStatus requestState={$sheetState} />
+  {#if context === 'page'}
+    <ModificationStatus requestState={$sheetState} />
+  {/if}
 
   <div class="aux-actions" slot="actions-right">
-    <Button
-      appearance="secondary"
-      size="medium"
-      disabled={$isLoading}
-      on:click={toggleTableInspector}
-      active={$isTableInspectorVisible}
-      aria-label="Inspector"
-    >
-      <Icon {...iconInspector} />
-      <span class="responsive-button-label">Inspector</span>
-    </Button>
+    {#if context === 'page' && isSelectable}
+      <!-- TODO: Display Share option when we re-implement it with the new permissions structure -->
+      <!-- <ShareTableDropdown id={table.oid} /> -->
+
+      <Tooltip allowHover>
+        <AnchorButton
+          slot="trigger"
+          href="/api/export/v0/tables/?{exportLinkParams}"
+          data-tinro-ignore
+          appearance="secondary"
+          size="medium"
+          aria-label={$_('export')}
+          download="{table.name}.csv"
+        >
+          <Icon {...iconExport} />
+          <span class="responsive-button-label">{$_('export')}</span>
+        </AnchorButton>
+        <span slot="content">
+          {$_('export_csv_help', {
+            values: { tableName: table.name },
+          })}
+        </span>
+      </Tooltip>
+
+      <Button
+        appearance="secondary"
+        size="medium"
+        disabled={$isLoading}
+        on:click={toggleTableInspector}
+        active={$tableInspectorVisible}
+        aria-label={$_('inspector')}
+      >
+        <Icon {...iconInspector} />
+        <span class="responsive-button-label">{$_('inspector')}</span>
+      </Button>
+    {/if}
   </div>
 </EntityPageHeader>
 
@@ -69,7 +119,7 @@
     align-items: center;
 
     > :global(* + *) {
-      margin-left: 1rem;
+      margin-left: 0.5rem;
     }
   }
 </style>

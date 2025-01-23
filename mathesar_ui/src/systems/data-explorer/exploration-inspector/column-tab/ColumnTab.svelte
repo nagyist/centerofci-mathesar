@@ -1,12 +1,18 @@
 <script lang="ts">
+  import { execPipe, filter, map } from 'iter-tools';
   import { onDestroy } from 'svelte';
+  import { _ } from 'svelte-i18n';
+
   import {
     Collapsible,
     LabeledInput,
     TextInput,
+    isDefinedNonNullable,
   } from '@mathesar-component-library';
-  import type QueryRunner from '../../QueryRunner';
+
   import QueryManager from '../../QueryManager';
+  import type { QueryRunner } from '../../QueryRunner';
+
   import ColumnSource from './ColumnSource.svelte';
   import DeleteColumnAction from './DeleteColumnAction.svelte';
 
@@ -15,21 +21,14 @@
   $: queryManager =
     queryHandler instanceof QueryManager ? queryHandler : undefined;
   $: ({ selection, columnsMetaData, processedColumns } = queryHandler);
-  $: ({ selectedCells, columnsSelectedWhenTheTableIsEmpty } = selection);
-  $: selectedColumns = (() => {
-    const ids = selection.getSelectedUniqueColumnsId(
-      $selectedCells,
-      $columnsSelectedWhenTheTableIsEmpty,
-    );
-    const columns = [];
-    for (const id of ids) {
-      const c = $processedColumns.get(id);
-      if (c !== undefined) {
-        columns.push(c);
-      }
-    }
-    return columns;
-  })();
+  $: ({ columnIds } = $selection);
+  $: selectedColumns = Array.from(
+    execPipe(
+      columnIds,
+      map((id) => $processedColumns.get(id)),
+      filter(isDefinedNonNullable),
+    ),
+  );
   $: hasMultipleSelectedColumns = selectedColumns.length > 1;
   $: selectedColumn =
     selectedColumns.length > 0 ? selectedColumns[0] : undefined;
@@ -71,13 +70,15 @@
 
 {#if hasMultipleSelectedColumns}
   <div class="section-content">
-    {selectedColumns.length} columns selected
+    {$_('multiple_columns_selected', {
+      values: { count: selectedColumns.length },
+    })}
   </div>
 {:else if selectedColumn}
   <Collapsible isOpen triggerAppearance="plain">
-    <span slot="header">Properties</span>
+    <span slot="header">{$_('properties')}</span>
     <div slot="content" class="section-content">
-      <LabeledInput label="Name" layout="stacked">
+      <LabeledInput label={$_('name')} layout="stacked">
         <TextInput
           value={selectedColumn.column.display_name}
           on:input={onNameInput}
@@ -97,5 +98,5 @@
 {/if}
 
 {#if !selectedColumn}
-  <div class="section-content">Select a column to view it's properties.</div>
+  <div class="section-content">{$_('select_columns_view_properties')}</div>
 {/if}

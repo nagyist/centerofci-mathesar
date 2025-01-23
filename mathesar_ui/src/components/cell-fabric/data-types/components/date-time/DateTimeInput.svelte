@@ -1,17 +1,20 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+
   import {
-    dayjs,
-    isDefinedNonNullable,
+    AttachableDropdown,
     FormattedInput,
     InlineDateTimePicker,
-    AttachableDropdown,
+    dayjs,
+    isDefinedNonNullable,
   } from '@mathesar-component-library';
-  import { createEventDispatcher } from 'svelte';
   import type { FormattedInputProps } from '@mathesar-component-library/types';
+
   import type {
     DateTimeCellExternalProps,
     DateTimeCellProps,
   } from '../typeDefinitions';
+
   import Presets from './Presets.svelte';
 
   const dispatch = createEventDispatcher();
@@ -61,6 +64,12 @@
     }
   }
 
+  function onKeydown(e: KeyboardEvent) {
+    if (e.key === 'Tab') {
+      close();
+    }
+  }
+
   function onDropdownClose() {
     dispatch('blur');
   }
@@ -81,6 +90,7 @@
   on:focus={open}
   on:focus
   on:blur={checkAndBlur}
+  on:keydown={onKeydown}
   on:keydown
   on:artificialInput
   on:artificialChange

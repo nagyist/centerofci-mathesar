@@ -1,29 +1,29 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { get } from 'svelte/store';
+  import { _ } from 'svelte-i18n';
 
-  import { ControlledModal } from '@mathesar-component-library';
+  import { api } from '@mathesar/api/rpc';
   import {
-    comboValidator,
     Field,
     FormSubmit,
+    comboValidator,
     makeForm,
     requiredField,
   } from '@mathesar/components/form';
   import FieldLayout from '@mathesar/components/form/FieldLayout.svelte';
   import OutcomeBox from '@mathesar/components/message-boxes/OutcomeBox.svelte';
+  import { RichText } from '@mathesar/components/rich-text';
   import SelectProcessedColumns from '@mathesar/components/SelectProcessedColumns.svelte';
   import { scrollBasedOnSelection } from '@mathesar/components/sheet';
+  import TableName from '@mathesar/components/TableName.svelte';
   import {
-    getTabularDataStoreFromContext,
     type ProcessedColumn,
+    getTabularDataStoreFromContext,
   } from '@mathesar/stores/table-data';
   import {
-    currentTable,
     getTableFromStoreOrApi,
-    moveColumns,
-    splitTable,
-    tables as tablesDataStore,
+    currentTablesData as tablesDataStore,
     validateNewTableName,
   } from '@mathesar/stores/tables';
   import { toast } from '@mathesar/stores/toast';
@@ -31,24 +31,28 @@
     columnNameIsAvailable,
     getSuggestedFkColumnName,
   } from '@mathesar/utils/columnUtils';
-  import { pluralize } from '@mathesar/utils/languageUtils';
   import { getErrorMessage } from '@mathesar/utils/errors';
+  import { ControlledModal } from '@mathesar-component-library';
+
   import type { LinkedTable } from './columnExtractionTypes';
   import {
     getLinkedTables,
     validateTableIsNotLinkedViaSelectedColumn,
   } from './columnExtractionUtils';
-  import CurrentTable from './CurrentTable.svelte';
   import type { ExtractColumnsModalController } from './ExtractColumnsModalController';
   import SelectLinkedTable from './SelectLinkedTable.svelte';
   import SuccessToastContent from './SuccessToastContent.svelte';
-  import TargetTable from './TargetTable.svelte';
 
   const tabularData = getTabularDataStoreFromContext();
 
   export let controller: ExtractColumnsModalController;
 
-  $: ({ processedColumns, constraintsDataStore, selection } = $tabularData);
+  $: ({
+    processedColumns,
+    constraintsDataStore,
+    selection,
+    table: currentTable,
+  } = $tabularData);
   $: ({ constraints } = $constraintsDataStore);
   $: availableProcessedColumns = [...$processedColumns.values()];
   $: ({ targetType, columns, isOpen } = controller);
@@ -74,15 +78,25 @@
         ]);
   $: proceedButtonLabel =
     $targetType === 'existingTable'
-      ? 'Move Columns'
-      : 'Create Table and Move Columns';
+      ? $_('move_columns')
+      : $_('create_table_move_columns');
   $: linkedTables = getLinkedTables({
     constraints,
     columns: $processedColumns,
-    tables: $tablesDataStore.data,
+    tables: $tablesDataStore.tablesMap,
   });
-  $: action = $targetType === 'newTable' ? 'extract' : 'move';
-  $: actionTitleCase = $targetType === 'newTable' ? 'Extract' : 'Move';
+  $: selectedColumnsHelpText = (() => {
+    if ($targetType === 'existingTable') {
+      if (targetTableName) {
+        return $_('select_columns_move_into_table');
+      }
+      return $_('select_columns_move');
+    }
+    if (targetTableName) {
+      return $_('select_columns_extract_into_table');
+    }
+    return $_('select_columns_extract');
+  })();
 
   function suggestNewFkColumnName(
     newTableName: string,
@@ -106,7 +120,10 @@
       // unmounting this component.
       return;
     }
-    selection.intersectSelectedRowsWithGivenColumns(_columns);
+    const columnIds = _columns.map((c) => String(c.id));
+    selection.updateWithoutFocus((s) =>
+      s.ofRowColumnIntersection(s.rowIds, columnIds),
+    );
   }
   $: handleColumnsChange($columns);
 
@@ -123,11 +140,18 @@
     const extractedColumnIds = extractedColumns.map((c) => c.id);
     try {
       if ($targetType === 'existingTable') {
-        const targetTableId = $linkedTable?.table.id;
+        const targetTableId = $linkedTable?.table.oid;
         if (!targetTableId) {
-          throw new Error('No target table selected');
+          throw new Error($_('no_target_table_selected'));
         }
-        await moveColumns($tabularData.id, extractedColumnIds, targetTableId);
+        await api.data_modeling
+          .move_columns({
+            database_id: currentTable.schema.database.id,
+            source_table_oid: currentTable.oid,
+            move_column_attnums: extractedColumnIds,
+            target_table_oid: targetTableId,
+          })
+          .run();
         const fkColumns = $linkedTable?.columns ?? [];
         let fkColumnId: number | undefined = undefined;
         if (fkColumns.length === 1) {
@@ -140,26 +164,33 @@
           ),
         );
       } else {
-        const response = await splitTable({
-          id: $tabularData.id,
-          idsOfColumnsToExtract: extractedColumnIds,
-          extractedTableName: newTableName,
-          newFkColumnName: $newFkColumnName,
-        });
-        followUps.push(getTableFromStoreOrApi(response.extracted_table));
+        const response = await api.data_modeling
+          .split_table({
+            database_id: currentTable.schema.database.id,
+            table_oid: currentTable.oid,
+            column_attnums: extractedColumnIds,
+            extracted_table_name: newTableName,
+            relationship_fk_column_name: $newFkColumnName,
+          })
+          .run();
+        followUps.push(
+          getTableFromStoreOrApi({
+            schema: currentTable.schema,
+            tableOid: response.extracted_table_oid,
+          }),
+        );
         followUps.push(
           $tabularData.refreshAfterColumnExtraction(
             extractedColumnIds,
-            response.fk_column,
+            response.new_fkey_attnum,
           ),
         );
       }
       if ($targetType === 'newTable') {
         toast.success({
-          title: `A new table ${newTableName} has been created with the extracted ${pluralize(
-            extractedColumns,
-            'columns',
-          )}`,
+          title: $_('new_table_created_with_extracted_column', {
+            values: { count: extractedColumns.length, newTableName },
+          }),
           contentComponent: SuccessToastContent,
           contentComponentProps: {
             newFkColumnName: constFkColumnName,
@@ -169,11 +200,23 @@
         const columnNames = extractedColumns.map(
           (processedColumn) => processedColumn.column.name,
         );
-        const message = `${
-          columnNames.length > 1
-            ? `Columns ${columnNames.join(',')} have`
-            : `Column ${columnNames[0]} has`
-        } been moved to table '${$linkedTable?.table.name}'`;
+        const linkedTableName = $linkedTable?.table.name ?? '';
+        let message: string;
+        if (columnNames.length === 1) {
+          message = $_('column_moved_to_table', {
+            values: {
+              columnName: columnNames[0],
+              tableName: linkedTableName,
+            },
+          });
+        } else {
+          message = $_('columns_moved_to_table', {
+            values: {
+              columnNames: columnNames.join(','),
+              tableName: linkedTableName,
+            },
+          });
+        }
         toast.success(message);
       }
       controller.close();
@@ -189,7 +232,7 @@
         // will need to modify this logic when we position the new column where
         // the old columns were.
         const newFkColumn = allColumns.slice(-1)[0];
-        selection.toggleColumnSelection(newFkColumn);
+        selection.update((s) => s.ofOneColumn(String(newFkColumn.id)));
         await tick();
         scrollBasedOnSelection();
       }
@@ -202,24 +245,34 @@
 <ControlledModal {controller} on:close={form.reset}>
   <span slot="title">
     {#if $targetType === 'existingTable'}
-      Move Columns To Linked Table
+      {$_('move_columns_to_linked_table', {
+        values: { count: $columns.length },
+      })}
     {:else}
-      Extract Columns Into a New Table
+      {$_('extract_columns_to_new_table', {
+        values: { count: $columns.length },
+      })}
     {/if}
   </span>
 
   {#if $targetType === 'newTable'}
-    <Field field={tableName} label="Name of New Table" layout="stacked">
+    <Field field={tableName} label={$_('name_of_new_table')} layout="stacked">
       <span slot="help">
-        The new table that will be linked to
-        <CurrentTable table={$currentTable} />
+        <RichText
+          text={$_('new_table_that_will_be_linked_to_table')}
+          let:slotName
+        >
+          {#if slotName === 'tableName'}
+            <TableName table={currentTable} truncate={false} bold />
+          {/if}
+        </RichText>
       </span>
     </Field>
   {:else}
     <Field
       field={linkedTable}
       input={{ component: SelectLinkedTable, props: { linkedTables } }}
-      label="Linked Table"
+      label={$_('linked_table')}
       layout="stacked"
     />
   {/if}
@@ -230,32 +283,53 @@
       component: SelectProcessedColumns,
       props: { options: availableProcessedColumns },
     }}
-    label={`Columns to ${actionTitleCase}`}
+    label={$targetType === 'newTable'
+      ? $_('columns_to_extract')
+      : $_('columns_to_move')}
     layout="stacked"
   >
     <span slot="help">
-      Select the columns you want to {action}
-      {#if targetTableName}
-        into
-        <TargetTable name={targetTableName} />
-      {/if}
+      <RichText text={selectedColumnsHelpText} let:slotName>
+        {#if slotName === 'targetTableName'}
+          <TableName table={{ name: targetTableName }} truncate={false} bold />
+        {/if}
+      </RichText>
     </span>
   </Field>
 
   <FieldLayout>
     <OutcomeBox>
       <p>
-        The {pluralize($columns, 'columns')} above will be removed from
-        <CurrentTable table={$currentTable} />
-        and added to
-        <TargetTable name={targetTableName} />
+        <RichText
+          text={targetTableName
+            ? $_('columns_removed_from_table_added_to_target', {
+                values: { count: $columns.length },
+              })
+            : $_('columns_removed_from_table_added_to_new_table', {
+                values: { count: $columns.length },
+              })}
+          let:slotName
+        >
+          {#if slotName === 'tableName'}
+            <TableName table={currentTable} truncate={false} bold />
+          {:else if slotName === 'targetTableName' && targetTableName}
+            <TableName
+              table={{ name: targetTableName }}
+              truncate={false}
+              bold
+            />
+          {/if}
+        </RichText>
       </p>
       {#if $targetType === 'newTable'}
         <p>
-          A new column will be added to
-          <CurrentTable table={$currentTable} />
+          <RichText text={$_('new_column_added_to_table')} let:slotName>
+            {#if slotName === 'tableName'}
+              <TableName table={currentTable} truncate={false} bold />
+            {/if}
+          </RichText>
         </p>
-        <Field field={newFkColumnName} label="Column Name" />
+        <Field field={newFkColumnName} label={$_('name_of_link_column')} />
       {/if}
     </OutcomeBox>
   </FieldLayout>

@@ -1,13 +1,14 @@
 <script lang="ts">
   import type { Placement } from '@popperjs/core/lib/enums';
+
+  import Button from '@mathesar-component-library-dir/button/Button.svelte';
+  import { iconExpandDown } from '@mathesar-component-library-dir/common/icons';
   import type {
     Appearance,
     Size,
   } from '@mathesar-component-library-dir/commonTypes';
-  import Button from '@mathesar-component-library-dir/button/Button.svelte';
   import Icon from '@mathesar-component-library-dir/icon/Icon.svelte';
 
-  import { iconExpandDown } from '@mathesar-component-library-dir/common/icons';
   import AttachableDropdown from './AttachableDropdown.svelte';
 
   export let triggerClass = '';
@@ -18,8 +19,10 @@
   export let ariaLabel: string | undefined = undefined;
   export let ariaControls: string | undefined = undefined;
   export let placements: Placement[] | undefined = undefined;
+  export let preferredPlacement: Placement | undefined = undefined;
   export let showArrow = true;
   export let size: Size = 'medium';
+  export let disabled = false;
 
   let triggerElement: HTMLElement | undefined;
 
@@ -63,6 +66,7 @@
   aria-label={ariaLabel}
   title={ariaLabel}
   {size}
+  {disabled}
   on:keydown
   on:focus
   on:blur
@@ -82,12 +86,13 @@
   trigger={triggerElement}
   {isOpen}
   {placements}
+  {preferredPlacement}
   class={contentClass}
   {closeOnInnerClick}
   on:close={close}
   on:open
   on:close
-  let:close
+  let:close={innerClose}
 >
-  <slot name="content" {close} />
+  <slot name="content" close={innerClose} />
 </AttachableDropdown>

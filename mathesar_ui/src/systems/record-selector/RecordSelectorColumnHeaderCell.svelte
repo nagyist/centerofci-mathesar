@@ -2,13 +2,6 @@
   import { onMount, tick } from 'svelte';
   import type { Writable } from 'svelte/store';
 
-  import {
-    Debounce,
-    getValueFromArtificialEvent,
-    getValueFromEvent,
-    Label,
-    LabelController,
-  } from '@mathesar-component-library';
   import DynamicInput from '@mathesar/components/cell-fabric/DynamicInput.svelte';
   import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
   import type {
@@ -17,6 +10,14 @@
   } from '@mathesar/stores/table-data';
   import type RecordSummaryStore from '@mathesar/stores/table-data/record-summaries/RecordSummaryStore';
   import type { OverflowDetails } from '@mathesar/utils/overflowObserver';
+  import {
+    Debounce,
+    Label,
+    LabelController,
+    getValueFromArtificialEvent,
+    getValueFromEvent,
+  } from '@mathesar-component-library';
+
   import Cell from './RecordSelectorCellWrapper.svelte';
 
   const labelController = new LabelController();
@@ -137,6 +138,7 @@
     position: absolute;
     bottom: var(--padding);
     height: var(--input-height);
+    max-height: var(--input-height);
     left: var(--padding);
     width: calc(100% - 2 * var(--padding));
     background: var(--white);

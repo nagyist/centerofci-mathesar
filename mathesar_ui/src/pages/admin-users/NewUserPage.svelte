@@ -1,16 +1,18 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
   import { router } from 'tinro';
-  import { Icon } from '@mathesar-component-library';
-  import type { User } from '@mathesar/api/users';
+
+  import type { User } from '@mathesar/api/rpc/users';
+  import AppendBreadcrumb from '@mathesar/components/breadcrumb/AppendBreadcrumb.svelte';
+  import FormBox from '@mathesar/components/form/FormBox.svelte';
   import { iconAddUser } from '@mathesar/icons';
   import {
-    getEditUsersPageUrl,
     ADMIN_USERS_PAGE_ADD_NEW_URL,
+    getEditUsersPageUrl,
   } from '@mathesar/routes/urls';
   import { getUsersStoreFromContext } from '@mathesar/stores/users';
-  import { UserDetailsForm } from '@mathesar/systems/users-and-permissions';
-  import AppendBreadcrumb from '@mathesar/components/breadcrumb/AppendBreadcrumb.svelte';
-  import FormBox from './FormBox.svelte';
+  import { UserDetailsForm } from '@mathesar/systems/users';
+  import { Icon } from '@mathesar-component-library';
 
   const usersStore = getUsersStoreFromContext();
 
@@ -24,12 +26,13 @@
   item={{
     type: 'simple',
     href: ADMIN_USERS_PAGE_ADD_NEW_URL,
-    label: 'New User',
+    label: $_('new_user'),
     icon: iconAddUser,
+    prependSeparator: true,
   }}
 />
 
-<h1><Icon {...iconAddUser} /> New User</h1>
+<h1><Icon {...iconAddUser} /> {$_('new_user')}</h1>
 
 <FormBox>
   <UserDetailsForm on:create={(e) => onUserCreate(e.detail)} />

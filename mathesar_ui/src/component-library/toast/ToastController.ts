@@ -1,16 +1,18 @@
-import type { IconProps } from '@mathesar-component-library-dir/icon/IconTypes';
 import type { SvelteComponent } from 'svelte';
 import { linear } from 'svelte/easing';
-import type { Writable, Readable } from 'svelte/store';
-import { writable, derived } from 'svelte/store';
-import type { PauseableTweened } from '@mathesar-component-library-dir/common/utils/pauseableTweened';
-import { pauseableTweened } from '@mathesar-component-library-dir/common/utils/pauseableTweened';
+import { type Readable, type Writable, derived, writable } from 'svelte/store';
+
 import {
-  iconSuccess,
-  iconLoading,
   iconError,
   iconInfo,
+  iconLoading,
+  iconSuccess,
 } from '@mathesar-component-library-dir/common/icons';
+import {
+  type PauseableTweened,
+  pauseableTweened,
+} from '@mathesar-component-library-dir/common/utils/pauseableTweened';
+import type { IconProps } from '@mathesar-component-library-dir/icon/IconTypes';
 
 /**
  * Allows control of the toast message after it is displayed
@@ -175,7 +177,7 @@ export class ToastController {
 export type ToastDetail = Partial<ToastEntryProps> | string;
 export type ToastShowFn = (d: ToastDetail) => ToastEntryController;
 
-interface MakeToast {
+export interface MakeToast {
   entries: Readable<ToastEntry[]>;
   info: ToastShowFn;
   success: ToastShowFn;

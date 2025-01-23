@@ -1,10 +1,27 @@
+import type { Column } from '@mathesar/api/rpc/columns';
+import type { FkConstraint } from '@mathesar/api/rpc/constraints';
+import type { DBObjectEntry } from '@mathesar/AppTypes';
+import type { DateTimeFormatter } from '@mathesar/utils/date-time/types';
 import type {
+  ComponentAndProps,
   FormattedInputProps,
   NumberFormatterOptions,
   SelectProps,
 } from '@mathesar-component-library/types';
-import type { DBObjectEntry } from '@mathesar/AppTypes';
-import type { DateTimeFormatter } from '@mathesar/utils/date-time/types';
+
+export type CellColumnLike = Pick<Column, 'type' | 'type_options' | 'metadata'>;
+
+export interface CellColumnFabric {
+  id: string | number;
+  column: CellColumnLike;
+  /**
+   * Present when the column has one single-column FK constraint. In the
+   * unlikely (but theoretically possible) scenario that this column has more
+   * than one FK constraint, the first FK constraint is referenced.
+   */
+  linkFk?: FkConstraint;
+  cellComponentAndProps: ComponentAndProps;
+}
 
 export type CellValueFormatter<T> = (
   value: T | null | undefined,
@@ -13,11 +30,12 @@ export type CellValueFormatter<T> = (
 export interface CellTypeProps<Value> {
   value: Value | null | undefined;
   isActive: boolean;
-  isSelectedInRange: boolean;
   disabled: boolean;
   searchValue?: unknown;
   isProcessing: boolean;
   isIndependentOfSheet: boolean;
+  showTruncationPopover: boolean;
+  canViewLinkedEntities: boolean;
 }
 
 // Primary key
@@ -34,7 +52,7 @@ export interface PrimaryKeyCellProps
 
 // Foreign key
 
-export type ForeignKeyCellValue = string | number | null;
+export type ForeignKeyCellValue = string | number | boolean | null;
 
 export interface LinkedRecordCellExternalProps {
   tableId: DBObjectEntry['id'];
@@ -43,6 +61,7 @@ export interface LinkedRecordCellExternalProps {
 export interface LinkedRecordCellProps
   extends CellTypeProps<ForeignKeyCellValue>,
     LinkedRecordCellExternalProps {
+  columnFabric: CellColumnFabric;
   recordSummary?: string;
   setRecordSummary?: (recordId: string, recordSummary: string) => void;
 }
@@ -112,6 +131,7 @@ export interface SingleSelectCellProps<Option>
 export interface FormattedInputCellExternalProps
   extends Omit<FormattedInputProps<string>, 'disabled' | 'value'> {
   formatForDisplay: CellValueFormatter<string>;
+  useTabularNumbers?: boolean;
 }
 
 export interface FormattedInputCellProps
@@ -137,11 +157,11 @@ export interface DateTimeCellProps
 // Array
 
 export interface ArrayCellExternalProps {
-  formatElementForDisplay: CellValueFormatter<never>;
+  formatElementForDisplay: CellValueFormatter<unknown>;
 }
 
 export interface ArrayCellProps
-  extends CellTypeProps<never[]>,
+  extends CellTypeProps<unknown[]>,
     ArrayCellExternalProps {}
 
 // Common

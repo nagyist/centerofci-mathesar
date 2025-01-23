@@ -1,22 +1,22 @@
-<!-- 
+<!--
   TODO: Implement the loader while renaming
   when implementing rename functionality
   using table inspector
- -->
+-->
 <script lang="ts">
-  import { Button, Icon } from '@mathesar-component-library';
-  import {
-    getTabularDataStoreFromContext,
-    type ProcessedColumn,
-  } from '@mathesar/stores/table-data';
-  import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
   import CellBackground from '@mathesar/components/CellBackground.svelte';
+  import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
   import {
     iconFiltering,
     iconGrouping,
     iconSortAscending,
     iconSortDescending,
   } from '@mathesar/icons';
+  import {
+    type ProcessedColumn,
+    getTabularDataStoreFromContext,
+  } from '@mathesar/stores/table-data';
+  import { Icon } from '@mathesar-component-library';
 
   export let processedColumn: ProcessedColumn;
   export let isSelected = false;
@@ -36,7 +36,13 @@
 
 <div class="header-cell-root">
   <CellBackground when={isSelected} color="var(--cell-bg-color-row-selected)" />
-  <Button appearance="ghost" on:click on:mousedown on:mouseenter>
+  <div
+    class="header-cell-btn btn btn-ghost size-medium"
+    style="cursor: inherit;"
+    on:click
+    on:mousedown
+    on:mouseenter
+  >
     <ProcessedColumnName {processedColumn} />
     {#if sorter || hasFilter || grouped}
       <div class="indicator-icons">
@@ -53,16 +59,21 @@
         {/if}
       </div>
     {/if}
-  </Button>
+  </div>
 </div>
 
 <style lang="scss">
+  .header-cell-btn {
+    width: 100%;
+    height: 100%;
+  }
   .header-cell-root {
     width: 100%;
-
+    height: 100%;
+    padding: 0.1rem 0rem;
+    cursor: inherit;
     :global(button.btn) {
       width: 100%;
-      padding: 0.26rem 0.5rem;
       font-size: inherit;
       justify-content: space-between;
     }

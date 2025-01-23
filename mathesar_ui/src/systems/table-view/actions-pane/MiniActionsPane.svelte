@@ -1,10 +1,14 @@
 <script lang="ts">
+  import type { ComponentProps } from 'svelte';
+
   import type { Dropdown } from '@mathesar/component-library';
   import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
-  import type { ComponentProps } from 'svelte';
+
   import FilterDropdown from './record-operations/filter/FilterDropdown.svelte';
   import GroupDropdown from './record-operations/group/GroupDropdown.svelte';
   import SortDropdown from './record-operations/sort/SortDropdown.svelte';
+
+  const canViewLinkedEntities = true;
 
   const dropdownProps: Partial<ComponentProps<Dropdown>> = {
     placement: 'bottom-end',
@@ -18,7 +22,7 @@
 </script>
 
 <div class="mini-actions-pane">
-  <FilterDropdown {filtering} {...dropdownProps} />
+  <FilterDropdown {filtering} {canViewLinkedEntities} {...dropdownProps} />
   <SortDropdown {sorting} {...dropdownProps} />
   <GroupDropdown {grouping} {...dropdownProps} />
 </div>

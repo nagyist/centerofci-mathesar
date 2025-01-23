@@ -1,8 +1,12 @@
 <script lang="ts">
-  import type { TableEntry } from '@mathesar/api/types/tables';
+  import { _ } from 'svelte-i18n';
+
   import type { FieldStore } from '@mathesar/components/form';
   import FieldErrors from '@mathesar/components/form/FieldErrors.svelte';
   import FieldLayout from '@mathesar/components/form/FieldLayout.svelte';
+  import { RichText } from '@mathesar/components/rich-text';
+  import type { Table } from '@mathesar/models/Table';
+
   import Pill from './LinkTablePill.svelte';
   import type { LinkType } from './linkTableUtils';
   import LinkTypeOption from './LinkTypeOption.svelte';
@@ -10,14 +14,18 @@
   export let linkTypes: LinkType[];
   export let isSelfReferential: boolean;
   export let field: FieldStore<LinkType>;
-  export let base: Pick<TableEntry, 'name'>;
-  export let target: Pick<TableEntry, 'name'>;
+  export let base: Pick<Table, 'name'>;
+  export let target: Pick<Table, 'name'>;
 </script>
 
 <FieldLayout>
   <fieldset>
     <legend>
-      Type of Link to <Pill table={target} which="target" />:
+      <RichText text={$_('type_of_relationship_with_table')} let:slotName>
+        {#if slotName === 'tableName'}
+          <Pill table={target} which="target" />:
+        {/if}
+      </RichText>
     </legend>
     <div class="options">
       {#each linkTypes as linkType (linkType)}
@@ -44,6 +52,7 @@
   }
   legend {
     margin-bottom: 0.5rem;
+    font-weight: var(--font-weight-medium);
   }
   .options {
     display: grid;

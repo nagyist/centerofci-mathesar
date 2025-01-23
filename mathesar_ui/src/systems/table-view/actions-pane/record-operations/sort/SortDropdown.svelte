@@ -1,10 +1,12 @@
 <script lang="ts">
   import type { ComponentProps } from 'svelte';
   import type { Writable } from 'svelte/store';
+  import { _ } from 'svelte-i18n';
 
-  import { BadgeCount, Dropdown, Icon } from '@mathesar-component-library';
   import { iconSorting } from '@mathesar/icons';
   import type { Sorting } from '@mathesar/stores/table-data';
+  import { BadgeCount, Dropdown, Icon } from '@mathesar-component-library';
+
   import Sort from './Sort.svelte';
 
   interface $$Props extends ComponentProps<Dropdown> {
@@ -18,12 +20,13 @@
   showArrow={false}
   triggerAppearance="secondary"
   {...$$restProps}
-  ariaLabel="Sort"
+  ariaLabel={$_('sort')}
 >
   <svelte:fragment slot="trigger">
     <Icon {...iconSorting} />
     <span class="responsive-button-label">
-      Sort <BadgeCount value={$sorting.size} />
+      {$_('sort')}
+      <BadgeCount value={$sorting.size} />
     </span>
   </svelte:fragment>
   <Sort slot="content" {sorting} />

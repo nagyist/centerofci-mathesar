@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { Icon } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
   import { iconLinkToRecordPage } from '@mathesar/icons';
+  import { Icon } from '@mathesar-component-library';
 
   export let href: string;
 
@@ -16,7 +18,7 @@
 <a
   {href}
   class="record-page-link"
-  title="Open Record"
+  title={$_('open_record')}
   on:contextmenu={handleContextMenu}
 >
   <Icon {...iconLinkToRecordPage} />
