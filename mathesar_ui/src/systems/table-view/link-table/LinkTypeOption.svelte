@@ -1,8 +1,11 @@
 <script lang="ts">
-  import { Label, Radio } from '@mathesar-component-library';
-  import type { TableEntry } from '@mathesar/api/types/tables';
+  import { _ } from 'svelte-i18n';
+
   import type { FieldStore } from '@mathesar/components/form';
-  import { assertExhaustive } from '@mathesar/utils/typeUtils';
+  import { RichText } from '@mathesar/components/rich-text';
+  import type { Table } from '@mathesar/models/Table';
+  import { Label, Radio, assertExhaustive } from '@mathesar-component-library';
+
   import Diagram from './diagram/Diagram.svelte';
   import Pill from './LinkTablePill.svelte';
   import type { LinkType } from './linkTableUtils';
@@ -10,19 +13,19 @@
   export let linkType: LinkType;
   export let isSelfReferential: boolean;
   export let field: FieldStore<LinkType>;
-  export let base: Pick<TableEntry, 'name'>;
-  export let target: Pick<TableEntry, 'name'>;
+  export let base: Pick<Table, 'name'>;
+  export let target: Pick<Table, 'name'>;
 
   $: checked = linkType === $field;
   $: label = (() => {
     if (linkType === 'oneToMany') {
-      return 'One to Many';
+      return $_('one_to_many');
     }
     if (linkType === 'manyToOne') {
-      return 'Many to One';
+      return $_('many_to_one');
     }
     if (linkType === 'manyToMany') {
-      return 'Many to Many';
+      return $_('many_to_many');
     }
     return assertExhaustive(linkType);
   })();
@@ -47,30 +50,54 @@
     </span>
     <span class="description">
       {#if linkType === 'oneToMany'}
-        One
-        <Pill table={base} which="base" />
-        record can be linked from multiple
-        <Pill table={target} which="target" />
-        records.
+        <RichText
+          text={$_('relationship_type_description_one_to_many')}
+          let:slotName
+        >
+          {#if slotName === 'baseTable'}
+            <Pill table={base} which="base" />
+          {:else if slotName === 'targetTable'}
+            <Pill table={target} which="target" />
+          {/if}
+        </RichText>
       {:else if linkType === 'manyToOne'}
-        Multiple
-        <Pill table={base} which="base" />
-        records can link to the same
-        <Pill table={target} which="target" />
-        record.
+        <RichText
+          text={$_('relationship_type_description_many_to_one')}
+          let:slotName
+        >
+          {#if slotName === 'baseTable'}
+            <Pill table={base} which="base" />
+          {:else if slotName === 'targetTable'}
+            <Pill table={target} which="target" />
+          {/if}
+        </RichText>
       {:else if linkType === 'manyToMany'}
         {#if isSelfReferential}
-          Multiple
-          <Pill table={base} which="base" />
-          records can link to each other through a new
-          <Pill table={{ name: 'Linking Table' }} which="mapping" />
+          <RichText
+            text={$_(
+              'relationship_type_description_many_to_many_self_referential',
+            )}
+            let:slotName
+          >
+            {#if slotName === 'baseTable'}
+              <Pill table={base} which="base" />
+            {:else if slotName === 'mappingTable'}
+              <Pill table={{ name: $_('mapping_table') }} which="mapping" />
+            {/if}
+          </RichText>
         {:else}
-          Multiple
-          <Pill table={base} which="base" />
-          and
-          <Pill table={target} which="target" />
-          records can link to each other through a new
-          <Pill table={{ name: 'Linking Table' }} which="mapping" />
+          <RichText
+            text={$_('relationship_type_description_many_to_many')}
+            let:slotName
+          >
+            {#if slotName === 'baseTable'}
+              <Pill table={base} which="base" />
+            {:else if slotName === 'targetTable'}
+              <Pill table={target} which="target" />
+            {:else if slotName === 'mappingTable'}
+              <Pill table={{ name: $_('mapping_table') }} which="mapping" />
+            {/if}
+          </RichText>
         {/if}
       {:else}
         {assertExhaustive(linkType)}

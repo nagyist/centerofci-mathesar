@@ -1,11 +1,15 @@
 <script lang="ts">
-  import { SpinnerButton } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
   import Spinner from '@mathesar/component-library/spinner/Spinner.svelte';
   import ErrorBox from '@mathesar/components/message-boxes/ErrorBox.svelte';
+  import DonateResource from '@mathesar/components/resources/DonateResource.svelte';
+  import { RichText } from '@mathesar/components/rich-text';
   import { iconRefresh } from '@mathesar/icons';
   import type { ReleaseDataStore } from '@mathesar/stores/releases';
   import { toast } from '@mathesar/stores/toast';
-  import { assertExhaustive } from '@mathesar/utils/typeUtils';
+  import { SpinnerButton, assertExhaustive } from '@mathesar-component-library';
+
   import ReleaseBox from './ReleaseBox.svelte';
 
   export let releaseDataStore: ReleaseDataStore;
@@ -35,13 +39,15 @@
   {@const { current, latest } = value}
   <div class="releases">
     {#if $loading}
-      <div>Loading release data</div>
+      <div>{$_('loading_release_data')}</div>
       <div><Spinner /></div>
     {:else if !current}
       <ErrorBox>
-        The currently-installed version is
-        <strong>{timestampedReleaseData.inputHash}</strong>
-        but we were unable to load data about this release.
+        <RichText text={$_('unable_to_load_release_data')} let:slotName>
+          {#if slotName === 'version'}
+            <strong>{timestampedReleaseData.inputHash}</strong>
+          {/if}
+        </RichText>
       </ErrorBox>
       {#if latest}
         <ReleaseBox release={latest} type={'latest'} />
@@ -50,7 +56,7 @@
       <ReleaseBox release={current} type="currently-installed-and-latest" />
     {:else if !latest}
       <ReleaseBox release={current} type="current" />
-      <ErrorBox>Unable to load data about the latest release.</ErrorBox>
+      <ErrorBox>{$_('unable_to_load_data_latest_release')}</ErrorBox>
     {:else if upgradeStatus === 'upgradable'}
       <ReleaseBox release={latest} type={'available-upgrade'} />
       <ReleaseBox release={current} type={'current'} />
@@ -62,22 +68,26 @@
     {/if}
   </div>
 {:else}
-  <div>Loading release data</div>
+  <div>{$_('loading_release_data')}</div>
   <div><Spinner /></div>
 {/if}
 
 <div class="store-status">
   <div class="check-button">
     <SpinnerButton
-      label="Check for Updates"
+      label={$_('check_for_updates')}
       appearance="default"
       icon={iconRefresh}
       onClick={refresh}
     />
   </div>
   {#if lastChecked}
-    Last checked: {lastChecked}
+    {$_('last_checked')}: {lastChecked}
   {/if}
+</div>
+
+<div class="donate">
+  <DonateResource />
 </div>
 
 <style>
@@ -91,5 +101,10 @@
   }
   .check-button {
     margin-bottom: 0.25rem;
+  }
+  .donate {
+    margin-top: 2rem;
+    max-width: 40rem;
+    text-wrap: balance;
   }
 </style>

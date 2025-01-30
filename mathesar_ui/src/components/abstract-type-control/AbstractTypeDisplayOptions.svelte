@@ -1,4 +1,8 @@
 <script lang="ts">
+  import type { Readable } from 'svelte/store';
+
+  import type { ColumnMetadata } from '@mathesar/api/rpc/columns';
+  import type { AbstractTypeDisplayConfig } from '@mathesar/stores/abstract-types/types';
   import {
     FormBuilder,
     getValidationContext,
@@ -7,24 +11,18 @@
     FormBuildConfiguration,
     FormValues,
   } from '@mathesar-component-library/types';
-  import type { AbstractTypeDisplayConfig } from '@mathesar/stores/abstract-types/types';
-  import type { Readable } from 'svelte/store';
-  import type { ColumnWithAbstractType } from './utils';
 
-  export let displayOptions: ColumnWithAbstractType['display_options'];
+  export let displayOptions: ColumnMetadata;
   export let displayOptionsConfig: AbstractTypeDisplayConfig;
   export let displayForm: FormBuildConfiguration;
   export let displayFormValues: Readable<FormValues>;
   export let disabled = false;
-
-  let displayFormHasError = false;
 
   const validationContext = getValidationContext();
   validationContext.addValidator('AbstractTypeConfigValidator', () => {
     let isValid = true;
     if (displayForm) {
       const isDisplayFormValid = displayForm.getValidationResult().isValid;
-      displayFormHasError = !isDisplayFormValid;
       isValid = isValid && isDisplayFormValid;
     }
     return isValid;

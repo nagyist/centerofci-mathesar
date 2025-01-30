@@ -1,29 +1,23 @@
-import type { TextTypeOptions } from '@mathesar/api/types/tables/columns';
+import type { Column } from '@mathesar/api/rpc/columns';
+import GrowableTextArea from '@mathesar/components/GrowableTextArea.svelte';
+import { TextInput, optionalNonNullable } from '@mathesar-component-library';
 import type {
   ComponentAndProps,
   TextInputProps,
 } from '@mathesar-component-library/types';
-import {
-  TextInput,
-  TextArea,
-  optionalNonNullable,
-} from '@mathesar-component-library';
-import TextBoxCell from './components/textbox/TextBoxCell.svelte';
-import TextAreaCell from './components/textarea/TextAreaCell.svelte';
-import type {
-  TextBoxCellExternalProps,
-  TextAreaCellExternalProps,
-} from './components/typeDefinitions';
-import type { CellComponentFactory, CellColumnLike } from './typeDefinitions';
 
-export interface StringLikeColumn extends CellColumnLike {
-  type_options: Partial<TextTypeOptions> | null;
-}
+import TextAreaCell from './components/textarea/TextAreaCell.svelte';
+import TextBoxCell from './components/textbox/TextBoxCell.svelte';
+import type {
+  TextAreaCellExternalProps,
+  TextBoxCellExternalProps,
+} from './components/typeDefinitions';
+import type { CellComponentFactory } from './typeDefinitions';
 
 const stringType: CellComponentFactory = {
   initialInputValue: '',
   get: (
-    column: StringLikeColumn,
+    column: Column,
     config?: { multiLine?: boolean },
   ): ComponentAndProps<
     TextBoxCellExternalProps | TextAreaCellExternalProps
@@ -33,10 +27,10 @@ const stringType: CellComponentFactory = {
     return { component, props: typeOptions };
   },
   getInput: (
-    column: StringLikeColumn,
+    column: Column,
     config?: { multiLine?: boolean },
   ): ComponentAndProps<TextInputProps> => {
-    const component = config?.multiLine ? TextArea : TextInput;
+    const component = config?.multiLine ? GrowableTextArea : TextInput;
     return {
       component,
       props: {
@@ -44,6 +38,13 @@ const stringType: CellComponentFactory = {
       },
     };
   },
+  getFilterInput: (column: Column): ComponentAndProps<TextInputProps> => ({
+    component: TextInput,
+    props: {
+      maxlength: optionalNonNullable(column.type_options?.length),
+    },
+  }),
+  getDisplayFormatter: () => String,
 };
 
 export default stringType;

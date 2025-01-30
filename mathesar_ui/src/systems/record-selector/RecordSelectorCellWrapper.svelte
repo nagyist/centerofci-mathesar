@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { ensureReadable } from '@mathesar-component-library';
   import type { OverflowDetails } from '@mathesar/utils/overflowObserver';
+  import { ensureReadable } from '@mathesar-component-library';
+
   import type {
-    CellLayoutRowType,
     CellLayoutColumnType,
+    CellLayoutRowType,
   } from './recordSelectorUtils';
 
   export let rowType: CellLayoutRowType;
   export let rowIsSelected = false;
   export let columnType: CellLayoutColumnType;
   export let overflowDetails: OverflowDetails | undefined = undefined;
-  export let title: string | undefined = undefined;
   export let showAboveOverlay = false;
 
   $: hasOverflowTop = ensureReadable(overflowDetails?.hasOverflowTop ?? false);
@@ -27,7 +27,6 @@
   class:table-overflow-top={$hasOverflowTop}
   class:table-overflow-left={$hasOverflowLeft}
   class:show-above-overlay={showAboveOverlay}
-  {title}
 >
   <slot />
 </div>

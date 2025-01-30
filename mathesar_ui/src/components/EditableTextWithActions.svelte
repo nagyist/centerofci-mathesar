@@ -1,16 +1,18 @@
-<!-- 
+<!--
   @component
 
   Enables inline editing with support for "Save" & "Cancel" actions.
- -->
+-->
 <script lang="ts">
-  import {
-    CancelOrProceedButtonPair,
-    TextInput,
-    TextArea,
-  } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
   import { toast } from '@mathesar/stores/toast';
   import { getErrorMessage } from '@mathesar/utils/errors';
+  import {
+    CancelOrProceedButtonPair,
+    TextArea,
+    TextInput,
+  } from '@mathesar-component-library';
 
   export let initialValue = '';
   export let onSubmit: (value: string) => Promise<void>;
@@ -52,7 +54,7 @@
 </script>
 
 <div class="editable-text">
-  {#if !isEditable}
+  {#if !isEditable || disabled}
     <svelte:component
       this={inputElement}
       on:focus={makeEditable}
@@ -77,7 +79,7 @@
         onCancel={handleCancel}
         isProcessing={isSubmitting}
         canProceed={canSave}
-        proceedButton={{ label: 'Save' }}
+        proceedButton={{ label: $_('save') }}
         size="small"
       />
     </div>

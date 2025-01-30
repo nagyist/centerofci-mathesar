@@ -1,87 +1,75 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
   import { router } from 'tinro';
-  import type { Database, SchemaEntry } from '@mathesar/AppTypes';
+
+  import type { SavedExploration } from '@mathesar/api/rpc/explorations';
   import LayoutWithHeader from '@mathesar/layouts/LayoutWithHeader.svelte';
+  import type { Database } from '@mathesar/models/Database';
+  import type { Schema } from '@mathesar/models/Schema';
+  import { getSchemaPageUrl } from '@mathesar/routes/urls';
   import {
-    ExplorationResult,
+    ExplorationResults,
     QueryModel,
     QueryRunner,
-    ExplorationInspector,
+    WithExplorationInspector,
   } from '@mathesar/systems/data-explorer';
-  import type { QueryInstance } from '@mathesar/api/types/queries';
-  import { currentDbAbstractTypes } from '@mathesar/stores/abstract-types';
-  import type { AbstractTypesMap } from '@mathesar/stores/abstract-types/types';
-  import { getSchemaPageUrl } from '@mathesar/routes/urls';
-  import { getUserProfileStoreFromContext } from '@mathesar/stores/userProfile';
+  import StatusBar from '@mathesar/systems/data-explorer/StatusBar.svelte';
+  import type { ShareConsumer } from '@mathesar/utils/shares';
+
   import Header from './Header.svelte';
 
-  const userProfile = getUserProfileStoreFromContext();
-
   export let database: Database;
-  export let schema: SchemaEntry;
-  export let query: QueryInstance;
+  export let schema: Schema;
+  export let query: SavedExploration;
+  export let shareConsumer: ShareConsumer | undefined = undefined;
 
-  $: canEditMetadata =
-    $userProfile?.hasPermission({ database, schema }, 'canEditMetadata') ??
-    false;
+  $: schemaName = schema.name;
 
   let queryRunner: QueryRunner | undefined;
   let isInspectorOpen = true;
 
-  function createQueryRunner(
-    _query: QueryInstance,
-    abstractTypesMap: AbstractTypesMap,
-  ) {
+  function createQueryRunner(_query: SavedExploration) {
     queryRunner?.destroy();
-    queryRunner = new QueryRunner(new QueryModel(_query), abstractTypesMap);
+    queryRunner = new QueryRunner({
+      query: new QueryModel(_query),
+      runMode: 'queryId',
+      shareConsumer,
+    });
   }
 
-  $: createQueryRunner(query, $currentDbAbstractTypes.data);
+  let context: 'shared-consumer-page' | 'page' = 'page';
+  $: context = shareConsumer ? 'shared-consumer-page' : 'page';
+  $: createQueryRunner(query);
 
   function gotoSchemaPage() {
-    router.goto(getSchemaPageUrl(database.name, schema.id));
+    router.goto(getSchemaPageUrl(database.id, schema.oid));
   }
 </script>
 
 <svelte:head>
-  <title>{query.name} | {schema.name} | Mathesar</title>
+  <title>{query.name} | {$schemaName} | {$_('mathesar')}</title>
 </svelte:head>
 
 <LayoutWithHeader fitViewport>
   {#if queryRunner}
     <div class="exploration-page">
-      <Header
-        bind:isInspectorOpen
-        {query}
-        {database}
-        {schema}
-        {canEditMetadata}
-      />
-      <div class="content">
-        <ExplorationResult queryHandler={queryRunner} isExplorationPage />
-        {#if isInspectorOpen}
-          <ExplorationInspector
-            queryHandler={queryRunner}
-            {canEditMetadata}
-            on:delete={gotoSchemaPage}
-          />
-        {/if}
-      </div>
+      <Header bind:isInspectorOpen {query} {database} {schema} {context} />
+      <WithExplorationInspector
+        {isInspectorOpen}
+        queryHandler={queryRunner}
+        on:delete={gotoSchemaPage}
+      >
+        <ExplorationResults queryHandler={queryRunner} />
+      </WithExplorationInspector>
+      <StatusBar queryHandler={queryRunner} />
     </div>
   {/if}
 </LayoutWithHeader>
 
-<style lang="scss">
+<style>
   .exploration-page {
     display: grid;
-    grid-template: auto 1fr / 1fr;
+    grid-template: auto 1fr auto / 1fr;
     height: 100%;
-
-    .content {
-      display: flex;
-      --exploration-inspector-width: 22.9rem;
-      overflow: hidden;
-      overflow-x: auto;
-    }
   }
 </style>

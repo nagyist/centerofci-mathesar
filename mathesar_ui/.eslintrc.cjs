@@ -1,15 +1,19 @@
-const typescript = require('typescript');
-
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
-  ignorePatterns: ['node_modules', 'dist', 'index.html', 'storybook-static'],
+  ignorePatterns: [
+    'node_modules',
+    'dist',
+    'index.html',
+    'src/**/*.stories.svelte',
+    '*.cjs',
+  ],
   parserOptions: {
     tsconfigRootDir: __dirname,
     project: ['./tsconfig.json'],
-    extraFileExtensions: ['.svelte', '.cjs'],
+    extraFileExtensions: ['.svelte', '.json'],
   },
-  plugins: ['svelte3', '@typescript-eslint'],
+  plugins: ['@typescript-eslint'],
   extends: [
     'airbnb-base',
     'airbnb-typescript/base',
@@ -17,10 +21,17 @@ module.exports = {
     'plugin:promise/recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:svelte/recommended',
+    'plugin:svelte/prettier',
+    'plugin:import/errors',
+    'plugin:import/warnings',
+    'plugin:import/typescript',
   ],
   rules: {
     'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
     'no-console': ['warn', { allow: ['error'] }],
+    'generator-star-spacing': 'off',
+    'no-continue': 'off',
     '@typescript-eslint/explicit-member-accessibility': 'off',
     '@typescript-eslint/ban-ts-comment': [
       'error',
@@ -37,12 +48,52 @@ module.exports = {
     'array-bracket-spacing': 'off',
     'no-restricted-syntax': 0,
     '@typescript-eslint/require-await': 'off',
+    '@typescript-eslint/consistent-type-imports': 'error',
+    'no-duplicate-imports': 'error',
     'class-methods-use-this': 'off',
+    'no-multiple-empty-lines': 1,
+    'import/order': [
+      'error',
+      {
+        alphabetize: {
+          order: 'asc',
+          orderImportKind: 'asc',
+          caseInsensitive: true,
+        },
+        'newlines-between': 'always',
+        groups: [
+          'builtin',
+          'external',
+          'internal',
+          'parent',
+          'sibling',
+          'index',
+        ],
+      },
+    ],
+    'sort-imports': [
+      'error',
+      {
+        ignoreDeclarationSort: true,
+      },
+    ],
+    'svelte/block-lang': [
+      'error',
+      {
+        enforceScriptPresent: true,
+        enforceStylePresent: false,
+        script: ['ts'],
+        style: ['scss', null],
+      },
+    ],
   },
   overrides: [
     {
       files: ['*.svelte'],
-      processor: 'svelte3/svelte3',
+      parser: 'svelte-eslint-parser',
+      parserOptions: {
+        parser: '@typescript-eslint/parser',
+      },
       rules: {
         'import/first': 'off',
         'import/no-duplicates': 'off',
@@ -75,6 +126,54 @@ module.exports = {
         '@typescript-eslint/no-unsafe-argument': 'off',
         'no-sequences': 'off',
         '@typescript-eslint/no-unused-expressions': 'off',
+        '@typescript-eslint/no-unused-vars': [
+          'warn',
+          { varsIgnorePattern: '^\\$\\$(Props|Events|Slots)$' },
+        ],
+      },
+    },
+    {
+      files: ['*.svelte'],
+      excludedFiles: [
+        'src/**/__meta__/**/*.svelte',
+        // Temporary exclusion
+        // Remove this when component library i18n context is implemented
+        'src/component-library/**/*.svelte',
+      ],
+      extends: ['plugin:@intlify/svelte/recommended'],
+      rules: {
+        '@intlify/svelte/no-raw-text': [
+          'error',
+          {
+            attributes: {
+              '/.+/': [
+                'label',
+                'triggerLabel',
+                'aria-label',
+                'title',
+                'placeholder',
+                'ariaLabel',
+                'searchPlaceholder',
+              ],
+            },
+            ignoreText: [
+              'DEFAULT',
+              'Mathesar.org',
+              'NULL',
+              '@',
+              '/',
+              '*',
+              '+',
+              ':',
+              '(',
+              ')',
+              '.',
+              '...',
+              '|',
+              '%',
+            ],
+          },
+        ],
       },
     },
     {
@@ -126,6 +225,23 @@ module.exports = {
         ],
       },
     },
+    {
+      files: ['src/**/*.json'],
+      rules: {
+        'sort-keys': 'error',
+        'quote-props': 'off',
+        '@typescript-eslint/quotes': 'off',
+        '@typescript-eslint/no-unused-expressions': 'off',
+        '@typescript-eslint/semi': 'off',
+        '@typescript-eslint/comma-dangle': 'off',
+      },
+    },
+    {
+      files: ['**/__meta__/*.svelte'],
+      rules: {
+        'svelte/block-lang': 'off',
+      },
+    },
   ],
   env: {
     es6: true,
@@ -134,10 +250,9 @@ module.exports = {
   },
   globals: {
     vi: true,
+    $$Generic: 'readonly',
   },
   settings: {
-    'svelte3/typescript': () => typescript,
-    'svelte3/ignore-styles': ({ lang }) => lang === 'scss',
     'import/resolver': {
       node: {
         extensions: ['.js', '.ts'],

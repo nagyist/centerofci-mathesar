@@ -1,13 +1,18 @@
 <script lang="ts">
-  import { Button, hasProperty } from '@mathesar-component-library';
+  import { _ } from 'svelte-i18n';
+
+  import { QUERY_CONTAINS_DELETED_COLUMN } from '@mathesar/api/rest/utils/errorCodes';
+  import { ApiMultiError } from '@mathesar/api/rest/utils/errors';
   import ErrorBox from '@mathesar/components/message-boxes/ErrorBox.svelte';
-  import { ApiMultiError } from '@mathesar/api/utils/errors';
-  import { QUERY_CONTAINS_DELETED_COLUMN } from '@mathesar/api/utils/errorCodes';
   import { getExplorationEditorPageUrl } from '@mathesar/routes/urls';
-  import { currentDatabase } from '@mathesar/stores/databases';
+  import { databasesStore } from '@mathesar/stores/databases';
   import { currentSchema } from '@mathesar/stores/schemas';
-  import type QueryRunner from '../QueryRunner';
+  import { Button, hasProperty } from '@mathesar-component-library';
+
   import QueryManager from '../QueryManager';
+  import type { QueryRunner } from '../QueryRunner';
+
+  const { currentDatabase } = databasesStore;
 
   export let queryHandler: QueryRunner | QueryManager;
   export let errors: ApiMultiError | string[];
@@ -18,14 +23,14 @@
 
   function deleteMissingColumns(column_id: number) {
     if (queryManager) {
-      queryManager.update((q) => q.withoutColumnsById([column_id]));
+      void queryManager.update((q) => q.withoutColumnsById([column_id]));
     }
   }
 </script>
 
 <div class="query-run-errors">
   <ErrorBox fullWidth>
-    <p class="error-header">The result could not be displayed.</p>
+    <p class="error-header">{$_('result_could_not_be_displayed')}</p>
     {#if errors instanceof ApiMultiError}
       {#each errors.errors as apierror}
         <ul>
@@ -33,8 +38,7 @@
             {@const columnId = Number(apierror.detail.column_id)}
             <li class="error">
               <p class="strong">
-                Some of the columns present in the query are missing in the
-                underlying base table.
+                {$_('some_columns_in_query_missing')}
               </p>
               {#if queryManager}
                 {@const columnsAndTransformsToDelete =
@@ -46,11 +50,10 @@
                 {@const transformsWithIndex =
                   columnsAndTransformsToDelete.transformsUsingColumnIds}
                 <p>
-                  You can attempt to recover the query by clicking on the button
-                  below.
+                  {$_('recover_query_click_button')}
                 </p>
                 {#if initialColumns.length > 0}
-                  <p>This will remove the following column(s):</p>
+                  <p>{$_('this_will_remove_following_columns')}</p>
                   <ul class="removal-list">
                     {#each initialColumns as initialColumn (initialColumn.alias)}
                       <li>
@@ -61,7 +64,7 @@
                   </ul>
                 {/if}
                 {#if transformsWithIndex.length > 0}
-                  <p>This will remove the following transformation(s):</p>
+                  <p>{$_('this_will_remove_following_transformations')}</p>
                   <ul class="removal-list">
                     {#each transformsWithIndex as transformInfo (transformInfo)}
                       <li>
@@ -76,24 +79,23 @@
                     appearance="secondary"
                     on:click={() => deleteMissingColumns(columnId)}
                   >
-                    Attempt Exploration recovery
+                    {$_('attempt_exploration_recovery')}
                   </Button>
                 </p>
               {:else if $currentDatabase && $currentSchema && $query.id}
                 <p>
-                  You can edit the exploration in the Data Explorer to attempt
-                  recovering it.
+                  {$_('edit_exploration_attempt_recovery')}
                 </p>
                 <p>
                   <a
                     class="btn btn-secondary"
                     href={getExplorationEditorPageUrl(
-                      $currentDatabase.name,
-                      $currentSchema.id,
+                      $currentDatabase.id,
+                      $currentSchema.oid,
                       $query.id,
                     )}
                   >
-                    Edit in Data Explorer
+                    {$_('edit_in_data_explorer')}
                   </a>
                 </p>
               {/if}

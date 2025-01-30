@@ -1,10 +1,14 @@
-import type { QueryInstanceFilterTransformation } from '@mathesar/api/types/queries';
-import { getLimitedFilterInformationById } from '@mathesar/stores/abstract-types';
+import { get } from 'svelte/store';
+import { _ } from 'svelte-i18n';
+
+import type { QueryInstanceFilterTransformation } from '@mathesar/api/rpc/explorations';
 import { validateFilterEntry } from '@mathesar/components/filter-entry';
+import { getLimitedFilterInformationById } from '@mathesar/stores/abstract-types';
+import type { FilterId } from '@mathesar/stores/abstract-types/types';
 
 export interface QueryFilterTransformationEntry {
   columnIdentifier: string;
-  conditionIdentifier: string;
+  conditionIdentifier: FilterId;
   value: unknown;
 }
 
@@ -13,11 +17,11 @@ export default class QueryFilterTransformationModel
 {
   type = 'filter' as const;
 
-  name = 'Filter' as const;
+  name = get(_)('filter');
 
   columnIdentifier;
 
-  conditionIdentifier;
+  conditionIdentifier: FilterId;
 
   value: unknown;
 
@@ -29,10 +33,13 @@ export default class QueryFilterTransformationModel
       this.conditionIdentifier = data.conditionIdentifier;
       this.value = data.value;
     } else {
-      [this.conditionIdentifier] = Object.keys(data.spec);
-      [this.columnIdentifier] =
-        data.spec[this.conditionIdentifier][0].column_name;
-      this.value = data.spec[this.conditionIdentifier][1]?.literal[0];
+      [this.conditionIdentifier] = Object.keys(data.spec) as FilterId[];
+      const filterConditionParams = data.spec[this.conditionIdentifier];
+      if (!filterConditionParams) {
+        throw new Error('Invalid QueryInstanceFilterTransformation');
+      }
+      [this.columnIdentifier] = filterConditionParams[0].column_name;
+      this.value = filterConditionParams[1]?.literal[0];
     }
   }
 
@@ -45,15 +52,14 @@ export default class QueryFilterTransformationModel
   }
 
   toJson(): QueryInstanceFilterTransformation {
-    const spec: QueryInstanceFilterTransformation['spec'] = {
-      [this.conditionIdentifier]: [{ column_name: [this.columnIdentifier] }],
-    };
-    if (typeof this.value !== 'undefined') {
-      spec[this.conditionIdentifier].push({ literal: [this.value] });
-    }
     return {
       type: 'filter',
-      spec,
+      spec: {
+        [this.conditionIdentifier]: [
+          { column_name: [this.columnIdentifier] },
+          ...(this.value !== undefined ? [{ literal: [this.value] }] : []),
+        ],
+      },
     };
   }
 

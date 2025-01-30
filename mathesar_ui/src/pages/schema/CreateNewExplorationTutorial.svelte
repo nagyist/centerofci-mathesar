@@ -1,27 +1,26 @@
 <script lang="ts">
-  import type { Database, SchemaEntry } from '@mathesar/AppTypes';
-  import { AnchorButton } from '@mathesar/component-library';
-  import Tutorial from '@mathesar/component-library/tutorial/Tutorial.svelte';
+  import { _ } from 'svelte-i18n';
+
+  import type { Database } from '@mathesar/models/Database';
+  import type { Schema } from '@mathesar/models/Schema';
   import { getDataExplorerPageUrl } from '@mathesar/routes/urls';
+  import { AnchorButton, Tutorial } from '@mathesar-component-library';
 
   export let database: Database;
-  export let schema: SchemaEntry;
+  export let schema: Schema;
 </script>
 
 <Tutorial>
-  <span slot="title"
-    >It's time to use your tables. Create your first exploration.</span
-  >
-  <span slot="body"
-    >Explorations let you query your data to uncover trends and insights. They
-    may be stored and run anytime to see the latest data. Explorations make
-    great reports. You might, for example, create an exploration that shows your
-    monthly spending.</span
-  >
+  <span slot="title">
+    {$_('time_to_create_exploration')}
+  </span>
+  <span slot="body">
+    {$_('what_is_an_exploration')}
+  </span>
   <AnchorButton
     slot="footer"
-    href={getDataExplorerPageUrl(database.name, schema.id)}
+    href={getDataExplorerPageUrl(database.id, schema.oid)}
   >
-    Open Data Explorer
+    {$_('open_data_explorer')}
   </AnchorButton>
 </Tutorial>

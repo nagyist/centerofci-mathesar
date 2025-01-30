@@ -1,50 +1,28 @@
 <script lang="ts">
-  import { get } from 'svelte/store';
+  import { isLoading as isTranslationLoading, locale } from 'svelte-i18n';
 
-  import { Confirmation, ToastPresenter } from '@mathesar-component-library';
-  import { confirmationController } from '@mathesar/stores/confirmation';
-  import { toast } from '@mathesar/stores/toast';
-  import { setUserProfileStoreInContext } from '@mathesar/stores/userProfile';
-  import {
-    RecordSelectorController,
-    setRecordSelectorControllerInContext,
-  } from '@mathesar/systems/record-selector/RecordSelectorController';
   import { preloadCommonData } from '@mathesar/utils/preloadData';
+  import { Spinner } from '@mathesar-component-library';
+
+  import AppContext from './AppContext.svelte';
+  import { initI18n } from './i18n';
   import RootRoute from './routes/RootRoute.svelte';
-  import { modal } from './stores/modal';
-  import { setReleasesStoreInContext } from './stores/releases';
-  import ModalRecordSelector from './systems/record-selector/ModalRecordSelector.svelte';
 
   const commonData = preloadCommonData();
-  if (commonData?.user) {
-    const userProfile = setUserProfileStoreInContext(commonData.user);
-    if (get(userProfile).isSuperUser) {
-      // Toggle these lines to test with a mock tag name
-      // setReleasesStoreInContext('1.75.0');
-      setReleasesStoreInContext(commonData.current_release_tag_name);
-    }
-  } else {
-    // This should never occur
-    // TODO: Throw an application wide error
-  }
-
-  const recordSelectorModal = modal.spawnModalController();
-  const recordSelectorController = new RecordSelectorController({
-    onOpen: () => recordSelectorModal.open(),
-    onClose: () => recordSelectorModal.close(),
-    nestingLevel: 0,
-  });
-  setRecordSelectorControllerInContext(recordSelectorController);
+  void initI18n(commonData.user.display_language ?? 'en');
 </script>
 
-<ToastPresenter entries={toast.entries} />
-<Confirmation controller={confirmationController} />
-<ModalRecordSelector
-  {recordSelectorController}
-  modalController={recordSelectorModal}
-/>
-
-<RootRoute />
+<AppContext {commonData}>
+  {#if $isTranslationLoading}
+    <div class="app-loader">
+      <Spinner size="2rem" />
+    </div>
+  {:else}
+    {#key $locale}
+      <RootRoute {commonData} />
+    {/key}
+  {/if}
+</AppContext>
 
 <!--
   Supporting aliases in scss within the preprocessor is a bit of work.
@@ -57,38 +35,11 @@
 -->
 <style global lang="scss">
   @import 'component-library/styles.scss';
+  @import 'packages/new-item-highlighter/highlightNewItems.scss';
 
   :root {
-    /** BASE COLORS **/
-    --color-white: #ffffff;
-    --color-blue-light: #e6f0ff;
-    --color-blue-medium: #3b82f6;
-    --color-blue-dark: #1d4ed8;
-    --color-orange-dark: #7c2d12;
-    --color-green-medium: #10b981;
-    --color-gray-lighter: #fafafa;
-    --color-gray-light: #f4f4f5;
-    --color-gray-medium: #d4d4d8;
-    --color-gray-dark: #a1a1aa;
-    --color-gray-darker: #27272a;
-    --color-contrast: var(--color-blue-medium);
-    --color-contrast-light: var(--color-blue-light);
-    --color-link: var(--color-blue-dark);
-    --color-text: #171717;
-    --color-text-muted: #6b7280;
     --color-substring-match: rgb(254, 221, 72);
     --color-substring-match-light: rgba(254, 221, 72, 0.2);
-    --text-size-xx-small: var(--size-xx-small); // 8px
-    --text-size-x-small: var(--size-x-small); // 10px
-    --text-size-small: var(--size-small); // 12px
-    --text-size-base: var(--size-base); // 14px
-    --text-size-large: var(--size-large); // 16px
-    --text-size-x-large: var(--size-x-large); // 18px
-    --text-size-xx-large: var(--size-xx-large); // 20px
-    --text-size-ultra-large: var(--size-ultra-large); // 24px
-    --text-size-super-ultra-large: var(--size-super-ultra-large); // 32px
-
-    --modal-z-index: 50;
     --modal-record-selector-z-index: 50;
 
     /** Component theming */
@@ -130,9 +81,19 @@
     --cell-border-horizontal: 1px solid var(--slate-200);
     --cell-border-vertical: 1px solid var(--slate-200);
 
-    --page-padding: 1em;
+    --page-padding-x: 1em;
+    --page-padding-y: 1em;
+    --page-padding: var(--page-padding-x) var(--page-padding-y);
+
+    --outer-page-padding-for-inset-page: 0;
+    --inset-page-padding: var(--size-xx-large) var(--page-padding-x);
 
     --max-layout-width: 54rem;
+    // For database page, schema page, and admin pages
+    --max-layout-width-console-pages: 72rem;
+    // For import upload, import preview pages
+    --max-layout-width-data-pages: 67.357rem;
+
     // Setting the header height here
     // since when the header is fixed
     // we can use this variable to add margin-top
@@ -140,13 +101,15 @@
     --header-height: 3.7378rem;
 
     --table-title-header-height: 4.6428rem;
+    --status-bar-padding: 0.3rem;
 
     color: var(--slate-800);
 
     --modal-z-index: 1;
     --dropdown-z-index: 1;
     --cell-errors-z-index: 1;
-    --toast-z-index: 2;
+    --new-item-highlighter-z-index: 1;
+    --toast-z-index: 3;
     --app-header-z-index: 1;
 
     overflow: hidden;
@@ -154,20 +117,38 @@
   }
 
   h1 {
-    margin: 0 0 1rem 0;
-    font-size: var(--size-xx-large);
+    margin: 0 0 1.5rem 0;
+    font-size: var(--size-ultra-large);
     font-weight: 500;
+  }
+
+  h2 {
+    font-size: var(--size-x-large);
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+  }
+
+  hr {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--slate-200);
+    display: block;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  code {
+    font-family: monospace;
+    font-size: 85%;
+    background: rgba(127, 127, 127, 0.5);
+    padding: 0.2em 0.3em;
+    border-radius: 0.2em;
   }
 
   .block {
     display: block;
-  }
-
-  .trim-child-margins > :first-child {
-    margin-top: 0;
-  }
-  .trim-child-margins > :last-child {
-    margin-bottom: 0;
   }
 
   /**
@@ -196,5 +177,17 @@
     border-radius: 3px;
     color: rgba(0, 0, 0, 0.6);
     font-weight: bold;
+  }
+
+  .bold-header {
+    font-weight: 500;
+  }
+
+  .app-loader {
+    width: 100vw;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    display: flex;
   }
 </style>

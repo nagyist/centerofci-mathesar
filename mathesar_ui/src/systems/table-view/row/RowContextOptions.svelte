@@ -1,58 +1,62 @@
 <script lang="ts">
-  import {
-    ButtonMenuItem,
-    iconExternalLink,
-    LinkMenuItem,
-  } from '@mathesar/component-library';
+  import { _ } from 'svelte-i18n';
+
   import { iconDeleteMajor } from '@mathesar/icons';
   import { confirmDelete } from '@mathesar/stores/confirmation';
   import { storeToGetRecordPageUrl } from '@mathesar/stores/storeBasedUrls';
   import {
-    RecordsData,
-    rowHasRecord,
     type RecordRow,
+    type RecordsData,
+    rowHasRecord,
   } from '@mathesar/stores/table-data';
+  import { getRowSelectionId } from '@mathesar/stores/table-data/records';
   import { toast } from '@mathesar/stores/toast';
-  import { getUserProfileStoreFromContext } from '@mathesar/stores/userProfile';
-  import { currentDatabase } from '@mathesar/stores/databases';
-  import { currentSchema } from '@mathesar/stores/schemas';
+  import {
+    ButtonMenuItem,
+    LinkMenuItem,
+    iconExternalLink,
+  } from '@mathesar-component-library';
 
   export let row: RecordRow;
-  export let recordId: number;
+  export let recordPk: string;
   export let recordsData: RecordsData;
+  export let isTableEditable: boolean;
 
-  const userProfile = getUserProfileStoreFromContext();
-
-  $: database = $currentDatabase;
-  $: schema = $currentSchema;
-  $: canEditTableRecords = !!$userProfile?.hasPermission(
-    { database, schema },
-    'canEditTableRecords',
-  );
+  // To be used in case of publicly shared links where user should not be able
+  // to view linked tables & explorations
+  const canViewLinkedEntities = true;
 
   async function handleDeleteRecords() {
     if (rowHasRecord(row)) {
       void confirmDelete({
-        identifierType: 'Row',
-        onProceed: () => recordsData.deleteSelected([Number(row.rowIndex)]),
+        identifierType: $_('record'),
+        body: [
+          $_('deleted_records_cannot_be_recovered', { values: { count: 1 } }),
+          $_('are_you_sure_to_proceed'),
+        ],
+        onProceed: () => recordsData.deleteSelected(getRowSelectionId(row)),
         onError: (e) => toast.fromError(e),
         onSuccess: () =>
           toast.success({
-            title: 'Row deleted successfully!',
+            title: $_('record_deleted_successfully'),
           }),
       });
     }
   }
 </script>
 
-<LinkMenuItem
-  href={$storeToGetRecordPageUrl({ recordId }) || ''}
-  icon={iconExternalLink}
->
-  Go to Record Page
-</LinkMenuItem>
-{#if canEditTableRecords}
-  <ButtonMenuItem on:click={handleDeleteRecords} danger icon={iconDeleteMajor}>
-    Delete Record
-  </ButtonMenuItem>
+{#if canViewLinkedEntities}
+  <LinkMenuItem
+    href={$storeToGetRecordPageUrl({ recordId: recordPk }) || ''}
+    icon={iconExternalLink}
+  >
+    {$_('go_to_record_page')}
+  </LinkMenuItem>
 {/if}
+<ButtonMenuItem
+  on:click={handleDeleteRecords}
+  icon={iconDeleteMajor}
+  disabled={!isTableEditable}
+>
+  {$_('delete_records', { values: { count: 1 } })}
+</ButtonMenuItem>

@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { rowHeightPx } from '@mathesar/geometry';
+
   import { getSheetContext } from './utils';
+  import type { Props as VirtualListProps } from './virtual-list/listUtils';
   import Resizer from './virtual-list/Resizer.svelte';
   import VirtualList from './virtual-list/VirtualList.svelte';
-  import type { Props as VirtualListProps } from './virtual-list/listUtils';
 
   const { stores, api } = getSheetContext();
   const { rowWidth, horizontalScrollOffset, scrollOffset } = stores;
@@ -23,9 +25,10 @@
       {itemCount}
       {paddingBottom}
       {itemSize}
+      estimatedItemSize={rowHeightPx}
       {itemKey}
       let:items
-      let:api
+      let:api={virtualListApi}
       on:scroll={(e) => {
         api.setScrollOffset(e.detail);
       }}
@@ -33,7 +36,7 @@
         api.setHorizontalScrollOffset(e.detail);
       }}
     >
-      <slot {items} {api} />
+      <slot {items} api={virtualListApi} />
     </VirtualList>
   </Resizer>
 </div>

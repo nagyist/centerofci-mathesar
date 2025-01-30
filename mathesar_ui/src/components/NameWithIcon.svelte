@@ -20,11 +20,11 @@
       {#if isLoading}
         <Spinner />
       {:else}
-        {#each icons as icon}
-          <Icon {...icon} size="min(1em, 0.75em + 0.25rem)" />
+        {#each icons as innerIcon}
+          <Icon size="min(1em, 0.75em + 0.25rem)" {...innerIcon} />
         {/each}
       {/if}
-    </span>&nbsp;<span class="name" style="white-space: normal">
+    </span>&nbsp;<span class="name">
       {#if name}
         {name}
       {:else}
@@ -39,18 +39,18 @@
     text-decoration: inherit;
   }
   .name-with-icon.bold {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
   .icon {
     color: var(--icon-color, currentcolor);
     opacity: var(--NameWithIcon__icon-opacity, 0.75);
+    vertical-align: bottom;
   }
   .icon > :global(.fa-icon + .fa-icon) {
     margin-left: 0.2em;
   }
   .name-with-icon.boxed .icon {
     display: inline-flex;
-    height: 1.2em;
     border-radius: 0.25em;
     padding: 0.2em;
     background: var(--icon-color, currentcolor);
@@ -61,5 +61,6 @@
   }
   .name {
     color: var(--name-color, currentcolor);
+    vertical-align: bottom;
   }
 </style>

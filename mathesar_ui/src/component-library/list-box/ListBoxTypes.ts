@@ -1,4 +1,5 @@
 import type { Readable } from 'svelte/store';
+
 import type CancellablePromise from '@mathesar-component-library-dir/common/utils/CancellablePromise';
 import type { LabelGetter } from '@mathesar-component-library-dir/common/utils/formatUtils';
 
@@ -15,7 +16,7 @@ export interface ListBoxStaticContextProps<Option> {
 export interface ListBoxProps<Option>
   extends Partial<ListBoxStaticContextProps<Option>> {
   labelKey?: string;
-  options: Option[] | (() => CancellablePromise<Option[]>);
+  options: readonly Option[] | (() => CancellablePromise<Option[]>);
   value?: Option[];
 }
 

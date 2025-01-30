@@ -1,27 +1,30 @@
 <script lang="ts">
-  import { createEventDispatcher, getContext, tick } from 'svelte';
+  import { createEventDispatcher, getContext, onMount, tick } from 'svelte';
+  import { _ } from 'svelte-i18n';
 
   // TODO remove dependency cycle
   // eslint-disable-next-line import/no-cycle
-  import { getRecordSelectorFromContext } from '@mathesar/systems/record-selector/RecordSelectorController';
 
-  import {
-    getGloballyUniqueId,
-    getLabelControllerFromContainingLabel,
-    getLabelIdFromInputId,
-    Icon,
-    iconExpandDown,
-    type AccompanyingElements,
-  } from '@mathesar-component-library';
   import BaseInput from '@mathesar/component-library/common/base-components/BaseInput.svelte';
   import type { LinkedRecordCellProps } from '@mathesar/components/cell-fabric/data-types/components/typeDefinitions';
   import LinkedRecord from '@mathesar/components/LinkedRecord.svelte';
   import { storeToGetRecordPageUrl } from '@mathesar/stores/storeBasedUrls';
+  import { getRecordSelectorFromContext } from '@mathesar/systems/record-selector/RecordSelectorController';
+  import {
+    type AccompanyingElements,
+    Icon,
+    getGloballyUniqueId,
+    getLabelControllerFromContainingLabel,
+    getLabelIdFromInputId,
+    iconExpandDown,
+  } from '@mathesar-component-library';
+
+  import type { LinkedRecordInputElement } from './LinkedRecordUtils';
 
   interface $$Props
     extends Omit<
       LinkedRecordCellProps,
-      'isActive' | 'isSelectedInRange' | 'isProcessing' | 'isIndependentOfSheet'
+      'isActive' | 'isSelected' | 'isProcessing' | 'isIndependentOfSheet'
     > {
     class?: string;
     id?: string;
@@ -46,7 +49,7 @@
   export let disabled = false;
 
   let isAcquiringInput = false;
-  let element: HTMLSpanElement | undefined;
+  let element: HTMLSpanElement;
 
   $: hasValue = value !== undefined && value !== null;
   $: labelController?.inputId.set(id);
@@ -56,13 +59,13 @@
       : undefined;
 
   function clear() {
-    value = undefined;
+    value = null;
     dispatch('artificialChange', undefined);
     dispatch('artificialInput', undefined);
     // If the value is cleared via a button, the focus may shift to that button.
     // We'd like to shift it back to the input element to that the user can
     // press `Enter` to launch the record selector.
-    element?.focus();
+    element.focus();
   }
 
   /**
@@ -103,7 +106,7 @@
       dispatch('artificialInput', value);
     }
     await tick();
-    element?.focus();
+    element.focus();
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -125,6 +128,11 @@
   function handleBlur() {
     window.removeEventListener('keydown', handleKeydown);
   }
+
+  onMount(() => {
+    (element as LinkedRecordInputElement).launchRecordSelector =
+      launchRecordSelector;
+  });
 </script>
 
 <BaseInput {disabled} {...$$restProps} bind:id />
@@ -169,8 +177,8 @@
       on:click={launchRecordSelector}
       role="button"
       tabindex="-1"
-      aria-label="Pick a record"
-      title="Pick a record"
+      aria-label={$_('pick_record')}
+      title={$_('pick_record')}
     >
       <Icon {...iconExpandDown} />
     </span>

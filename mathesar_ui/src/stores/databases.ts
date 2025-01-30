@@ -1,81 +1,155 @@
-import { writable, derived } from 'svelte/store';
-import { preloadCommonData } from '@mathesar/utils/preloadData';
-import databaseApi from '@mathesar/api/databases';
-import { States } from '@mathesar/api/utils/requestUtils';
+import { map } from 'iter-tools';
+import { type Readable, derived, writable } from 'svelte/store';
 
-import type { Writable, Readable } from 'svelte/store';
-import type { Database } from '@mathesar/AppTypes';
-import type { PaginatedResponse } from '@mathesar/api/utils/requestUtils';
-import type { CancellablePromise } from '@mathesar-component-library';
+import { api } from '@mathesar/api/rpc';
+import type { RawDatabase, SystemSchema } from '@mathesar/api/rpc/databases';
+import type { RawServer } from '@mathesar/api/rpc/servers';
+import { Database } from '@mathesar/models/Database';
+import { Server } from '@mathesar/models/Server';
+import { batchRun } from '@mathesar/packages/json-rpc-client-builder';
+import { preloadCommonData } from '@mathesar/utils/preloadData';
+import type { MakeWritablePropertiesReadable } from '@mathesar/utils/typeUtils';
+import {
+  ImmutableMap,
+  WritableMap,
+  defined,
+} from '@mathesar-component-library';
 
 const commonData = preloadCommonData();
 
-export const currentDBName: Writable<Database['name'] | undefined> = writable(
-  commonData?.current_db ?? undefined,
-);
-
-export interface DatabaseStoreData {
-  preload?: boolean;
-  state: States;
-  data?: Database[];
-  error?: string;
+function sortDatabases(c: Iterable<Database>): Database[] {
+  return [...c].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export const databases = writable<DatabaseStoreData>({
-  preload: true,
-  state: States.Loading,
-  data: commonData?.databases ?? [],
-});
-
-export const currentDBId: Readable<Database['id'] | undefined> = derived(
-  [currentDBName, databases],
-  ([_currentDBName, databasesStore]) => {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const _databases = databasesStore.data;
-    if (!_databases?.length) {
-      return undefined;
-    }
-    return _databases?.find((database) => database.name === _currentDBName)?.id;
-  },
-);
-
-export const currentDatabase = derived(
-  [currentDBName, databases],
-  ([_currentDBName, databasesStore]) => {
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    const _databases = databasesStore.data;
-    if (!_databases?.length) {
-      return undefined;
-    }
-    return _databases?.find((database) => database.name === _currentDBName);
-  },
-);
-
-let databaseRequest: CancellablePromise<PaginatedResponse<Database>>;
-
-export async function reloadDatabases(): Promise<
-  PaginatedResponse<Database> | undefined
-> {
-  databases.update((currentData) => ({
-    ...currentData,
-    state: States.Loading,
-  }));
-
-  try {
-    databaseRequest?.cancel();
-    databaseRequest = databaseApi.list();
-    const response = await databaseRequest;
-    const data = response.results || [];
-    databases.set({
-      state: States.Done,
-      data,
-    });
-    return response;
-  } catch (err) {
-    databases.set({
-      state: States.Error,
-      error: err instanceof Error ? err.message : undefined,
-    });
-    return undefined;
+function* generateDatabaseEntries(
+  rawServers: Iterable<RawServer>,
+  rawDatabases: Iterable<RawDatabase>,
+): Iterable<[number, Database]> {
+  const serverMap = new Map(
+    map((s) => [s.id, new Server({ rawServer: s })], rawServers),
+  );
+  for (const rawDatabase of rawDatabases) {
+    const server =
+      serverMap.get(rawDatabase.server_id) ??
+      Server.dummy(rawDatabase.server_id);
+    const database = new Database({ rawDatabase, server });
+    yield [database.id, database];
   }
 }
+
+class DatabasesStore {
+  private readonly unsortedDatabases = new WritableMap<
+    Database['id'],
+    Database
+  >();
+
+  readonly databases: Readable<ImmutableMap<Database['id'], Database>>;
+
+  private readonly currentDatabaseId = writable<Database['id'] | undefined>();
+
+  readonly currentDatabase: Readable<Database | undefined>;
+
+  constructor(
+    databases: Iterable<[number, Database]>,
+    currentDatabaseId: number | null | undefined,
+  ) {
+    this.unsortedDatabases.reconstruct(databases);
+    this.databases = derived(
+      this.unsortedDatabases,
+      (ud) =>
+        new ImmutableMap(sortDatabases(ud.values()).map((d) => [d.id, d])),
+    );
+    this.currentDatabaseId.set(currentDatabaseId ?? undefined);
+    this.currentDatabase = derived(
+      [this.databases, this.currentDatabaseId],
+      ([d, id]) => defined(id, (v) => d.get(v)),
+    );
+  }
+
+  private addDatabase(database: Database) {
+    this.unsortedDatabases.set(database.id, database);
+  }
+
+  async connectExistingDatabase(
+    props: Parameters<typeof api.databases.setup.connect_existing>[0],
+  ) {
+    const { database, server } = await api.databases.setup
+      .connect_existing(props)
+      .run();
+    const connectedDatabase = new Database({
+      rawDatabase: database,
+      server: new Server({ rawServer: server }),
+    });
+    this.addDatabase(connectedDatabase);
+    return connectedDatabase;
+  }
+
+  async createNewDatabase(
+    props: Parameters<typeof api.databases.setup.create_new>[0],
+  ) {
+    const { database, server } = await api.databases.setup
+      .create_new(props)
+      .run();
+    const connectedDatabase = new Database({
+      rawDatabase: database,
+      server: new Server({ rawServer: server }),
+    });
+    this.addDatabase(connectedDatabase);
+    return connectedDatabase;
+  }
+
+  async disconnectDatabase(p: {
+    database: Pick<Database, 'id'>;
+    schemas_to_remove?: SystemSchema[];
+    role?: { name: string; password: string };
+    disconnect_db_server: boolean;
+  }) {
+    await api.databases.configured
+      .disconnect({
+        database_id: p.database.id,
+        strict: true,
+        schemas_to_remove: p.schemas_to_remove,
+        role_name: p.role?.name,
+        password: p.role?.password,
+        disconnect_db_server: p.disconnect_db_server,
+      })
+      .run();
+    this.unsortedDatabases.delete(p.database.id);
+  }
+
+  async refresh() {
+    const [rawServers, rawDatabases] = await batchRun([
+      api.servers.configured.list(),
+      api.databases.configured.list({}),
+    ]);
+    const databases = generateDatabaseEntries(rawServers, rawDatabases);
+    this.unsortedDatabases.reconstruct(databases);
+  }
+
+  setCurrentDatabaseId(databaseId: Database['id']) {
+    this.currentDatabaseId.set(databaseId);
+  }
+
+  clearCurrentDatabaseId() {
+    this.currentDatabaseId.set(undefined);
+  }
+}
+
+export type DatabaseDisconnectFn = typeof databasesStore.disconnectDatabase;
+
+export const databasesStore: MakeWritablePropertiesReadable<DatabasesStore> =
+  new DatabasesStore(
+    generateDatabaseEntries(commonData.servers, commonData.databases),
+    commonData.current_database,
+  );
+
+/** ⚠️ This readable store contains a type assertion designed to sacrifice type
+ * safety for the benefit of convenience.
+ *
+ * We need to access `currentDatabase` like EVERYWHERE throughout the app, and
+ * we'd like to avoid checking if it's defined every time. So we assert that it
+ * is defined, and we'll just have to be careful to **never use the value from
+ * this store within a context where no database is set.**
+ */
+export const currentDatabase =
+  databasesStore.currentDatabase as Readable<Database>;

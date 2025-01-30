@@ -14,13 +14,15 @@
     | ((recordId: string, recordSummary: string) => void)
     | undefined = undefined;
   export let isActive = false;
-  export let isSelectedInRange = false;
   export let disabled = false;
   export let showAsSkeleton = false;
   export let horizontalAlignment: HorizontalAlignment | undefined = undefined;
   export let searchValue: unknown | undefined = undefined;
   export let isProcessing = false;
   export let isIndependentOfSheet = false;
+  export let showTruncationPopover = false;
+  export let canViewLinkedEntities = true;
+  export let lightText = false;
 
   $: ({ cellComponentAndProps } = columnFabric);
   $: ({ component } = cellComponentAndProps);
@@ -32,12 +34,13 @@
   data-column-identifier={columnFabric.id}
   class:show-as-skeleton={showAsSkeleton}
   class:is-independent={isIndependentOfSheet}
+  class:light-text={lightText}
 >
   <svelte:component
     this={component}
     {...props}
+    {columnFabric}
     {isActive}
-    {isSelectedInRange}
     {disabled}
     {isIndependentOfSheet}
     {horizontalAlignment}
@@ -45,11 +48,11 @@
     {setRecordSummary}
     {searchValue}
     {isProcessing}
+    {showTruncationPopover}
+    {canViewLinkedEntities}
     bind:value
     on:movementKeyDown
-    on:activate
     on:update
-    on:mouseenter
   />
 
   <div class="loader">
@@ -94,5 +97,8 @@
   }
   .cell-fabric:not(.show-as-skeleton) .loader {
     display: none;
+  }
+  .light-text {
+    color: var(--cell-text-color-processing);
   }
 </style>

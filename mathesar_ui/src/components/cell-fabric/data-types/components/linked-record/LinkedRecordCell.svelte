@@ -1,16 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { _ } from 'svelte-i18n';
 
-  import {
-    Icon,
-    iconExpandDown,
-    compareWholeValues,
-  } from '@mathesar-component-library';
   import Default from '@mathesar/components/Default.svelte';
-  import Null from '@mathesar/components/Null.svelte';
   import LinkedRecord from '@mathesar/components/LinkedRecord.svelte';
+  import Null from '@mathesar/components/Null.svelte';
   // eslint-disable-next-line import/no-cycle
   import { getRecordSelectorFromContext } from '@mathesar/systems/record-selector/RecordSelectorController';
+  import {
+    Icon,
+    compareWholeValues,
+    iconExpandDown,
+  } from '@mathesar-component-library';
+
   import CellWrapper from '../CellWrapper.svelte';
   import type { LinkedRecordCellProps } from '../typeDefinitions';
 
@@ -20,7 +22,7 @@
   const recordSelector = getRecordSelectorFromContext();
 
   export let isActive: $$Props['isActive'];
-  export let isSelectedInRange: $$Props['isSelectedInRange'];
+  export let columnFabric: $$Props['columnFabric'];
   export let value: $$Props['value'] = undefined;
   export let searchValue: $$Props['searchValue'] = undefined;
   export let recordSummary: $$Props['recordSummary'] = undefined;
@@ -30,6 +32,7 @@
   export let isIndependentOfSheet: $$Props['isIndependentOfSheet'];
 
   let wasActiveBeforeClick = false;
+  let cellWrapperElement: HTMLElement;
 
   $: hasValue = value !== undefined && value !== null;
   $: valueComparisonOutcome = compareWholeValues(searchValue, value);
@@ -40,18 +43,20 @@
     }
     event?.stopPropagation();
     const result = await recordSelector.acquireUserInput({ tableId });
-    if (result === undefined) {
-      return;
+    const linkedFkColumnId = columnFabric.linkFk?.referent_columns[0];
+    if (result) {
+      if (linkedFkColumnId) {
+        value = result.record[linkedFkColumnId];
+      } else {
+        value = result.recordId;
+      }
+      setRecordSummary(String(result.recordId), result.recordSummary);
+      dispatch('update', { value });
     }
-    value = result.recordId;
-    setRecordSummary(String(result.recordId), result.recordSummary);
-    dispatch('update', { value });
 
-    // This is a band-aid to make the cell remain selected after opening and
-    // closing the record selector. I'm not sure why we lose the cell selection
-    // when the record selector closes. It would be good to figure out why and
-    // fix it somewhere else.
-    dispatch('activate');
+    // Re-focus the cell element so that the user can yes the keyboard to move
+    // the active cell.
+    cellWrapperElement.focus();
   }
 
   function handleWrapperKeyDown(e: KeyboardEvent) {
@@ -90,16 +95,15 @@
 
 <CellWrapper
   {isActive}
-  {isSelectedInRange}
   {disabled}
   {isIndependentOfSheet}
-  on:activate
   on:mouseenter
   on:keydown={handleWrapperKeyDown}
   on:mousedown={handleMouseDown}
   on:click={handleClick}
   on:dblclick={launchRecordSelector}
   hasPadding={false}
+  bind:element={cellWrapperElement}
 >
   <div class="linked-record-cell" class:disabled>
     <div class="value">
@@ -119,8 +123,8 @@
       <button
         class="dropdown-button passthrough"
         on:click={launchRecordSelector}
-        aria-label="Pick a record"
-        title="Pick a record"
+        aria-label={$_('pick_record')}
+        title={$_('pick_record')}
       >
         <Icon {...iconExpandDown} />
       </button>

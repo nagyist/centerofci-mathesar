@@ -1,23 +1,27 @@
 <script lang="ts">
-  import {
-    Icon,
-    Checkbox,
-    iconLoading,
-    Help,
-    LabeledInput,
-  } from '@mathesar-component-library';
+  import { createEventDispatcher } from 'svelte';
+  import { _ } from 'svelte-i18n';
+
+  import { RichText } from '@mathesar/components/rich-text';
   import type {
     ColumnsDataStore,
-    ProcessedColumn,
     ConstraintsDataStore,
+    ProcessedColumn,
   } from '@mathesar/stores/table-data';
   import { toast } from '@mathesar/stores/toast';
-  import { createEventDispatcher } from 'svelte';
+  import { getErrorMessage } from '@mathesar/utils/errors';
+  import {
+    Checkbox,
+    Help,
+    Icon,
+    LabeledInput,
+    iconLoading,
+  } from '@mathesar-component-library';
 
   export let column: ProcessedColumn;
   export let columnsDataStore: ColumnsDataStore;
   export let constraintsDataStore: ConstraintsDataStore;
-  export let canExecuteDDL: boolean;
+  export let currentRoleOwnsTable: boolean;
 
   let isRequestingToggleAllowNull = false;
   let isRequestingToggleAllowDuplicates = false;
@@ -38,19 +42,26 @@
         column.column,
         newAllowsNull,
       );
-      toast.success(
-        `Column "${column.column.name}" will ${
-          newAllowsNull ? '' : 'no longer '
-        }allow NULL.`,
-      );
+      const msg = newAllowsNull
+        ? $_('column_will_allow_null', {
+            values: {
+              columnName: column.column.name,
+            },
+          })
+        : $_('column_will_not_allow_null', {
+            values: {
+              columnName: column.column.name,
+            },
+          });
+      toast.success(msg);
       dispatch('close');
     } catch (error) {
-      toast.error(
-        `Unable to update "Allow NULL" of column "${column.column.name}". ${
-          // @ts-ignore: https://github.com/centerofci/mathesar/issues/1055
-          error.message as string
-        }.`,
-      );
+      const errorInfo = $_('unable_to_update_allow_null_column', {
+        values: {
+          columnName: column.column.name,
+        },
+      });
+      toast.error(`${errorInfo} ${getErrorMessage(error)}.`);
     } finally {
       isRequestingToggleAllowNull = false;
     }
@@ -64,17 +75,26 @@
         column.column,
         !newAllowsDuplicates,
       );
-      const message = `Column "${column.column.name}" will ${
-        newAllowsDuplicates ? '' : 'no longer '
-      }allow duplicates.`;
-      toast.success({ message });
+      const msg = newAllowsDuplicates
+        ? $_('column_will_allow_duplicates', {
+            values: {
+              columnName: column.column.name,
+            },
+          })
+        : $_('column_will_not_allow_duplicates', {
+            values: {
+              columnName: column.column.name,
+            },
+          });
+      toast.success(msg);
       dispatch('close');
     } catch (error) {
-      const message = `Unable to update "Allow Duplicates" of column "${
-        column.column.name
-        // @ts-ignore: https://github.com/centerofci/mathesar/issues/1055
-      }". ${error.message as string}.`;
-      toast.error({ message });
+      const errorInfo = $_('unable_to_update_allow_duplicates_column', {
+        values: {
+          columnName: column.column.name,
+        },
+      });
+      toast.error(`${errorInfo} ${getErrorMessage(error)}.`);
     } finally {
       isRequestingToggleAllowDuplicates = false;
     }
@@ -84,18 +104,17 @@
 <div class="column-options">
   <LabeledInput layout="inline-input-first">
     <span slot="label">
-      Restrict to Unique
+      {$_('restrict_to_unique')}
       <Help>
-        Enable this option to make sure that the column only contains unique
-        values. Useful for columns that contain identifiers, such as a person's
-        ID number or emails.
+        {$_('restrict_to_unique_help')}
       </Help>
     </span>
+
     {#if isRequestingToggleAllowDuplicates}
       <Icon class="opt" {...iconLoading} />
     {:else}
       <Checkbox
-        disabled={isRequestingToggleAllowDuplicates || !canExecuteDDL}
+        disabled={isRequestingToggleAllowDuplicates || !currentRoleOwnsTable}
         checked={!allowsDuplicates}
         on:change={toggleAllowDuplicates}
       />
@@ -104,17 +123,20 @@
 
   <LabeledInput layout="inline-input-first">
     <span slot="label">
-      Disallow <span class="null">NULL</span> Values
+      <RichText text={$_('disallow_null_values')} let:slotName>
+        {#if slotName === 'null'}
+          <span class="null">NULL</span>
+        {/if}
+      </RichText>
       <Help>
-        Enable this option to prevent null values in the column. Null values are
-        empty values that are not the same as zero or an empty string.
+        {$_('disallow_null_values_help')}
       </Help>
     </span>
     {#if isRequestingToggleAllowNull}
       <Icon class="opt" {...iconLoading} />
     {:else}
       <Checkbox
-        disabled={isRequestingToggleAllowNull || !canExecuteDDL}
+        disabled={isRequestingToggleAllowNull || !currentRoleOwnsTable}
         checked={!allowsNull}
         on:change={toggleAllowNull}
       />
@@ -124,7 +146,7 @@
 
 <style lang="scss">
   .column-options {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
     display: flex;
     flex-direction: column;
 

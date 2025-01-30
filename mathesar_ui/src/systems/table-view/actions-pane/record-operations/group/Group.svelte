@@ -1,13 +1,17 @@
 <script lang="ts">
-  import { DropdownMenu, ButtonMenuItem } from '@mathesar-component-library';
   import type { Writable } from 'svelte/store';
+  import { _ } from 'svelte-i18n';
+
+  import ProcessedColumnName from '@mathesar/components/column/ProcessedColumnName.svelte';
+  import GroupEntryComponent from '@mathesar/components/group-entry/GroupEntry.svelte';
+  import { iconAddNew } from '@mathesar/icons';
   import {
-    getTabularDataStoreFromContext,
     type Grouping,
     type ProcessedColumn,
+    getTabularDataStoreFromContext,
   } from '@mathesar/stores/table-data';
-  import GroupEntryComponent from '@mathesar/components/group-entry/GroupEntry.svelte';
-  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
+  import { getColumnConstraintTypeByColumnId } from '@mathesar/utils/columnUtils';
+  import { ButtonMenuItem, DropdownMenu } from '@mathesar-component-library';
 
   const tabularData = getTabularDataStoreFromContext();
 
@@ -42,15 +46,10 @@
       }),
     );
   }
-
-  function getColumnConstraintTypeByColumnId(columnId: number) {
-    const linkFkType = $processedColumns.get(columnId)?.linkFk?.type;
-    return linkFkType ? [linkFkType] : undefined;
-  }
 </script>
 
 <div class="groups" class:grouped={$grouping.entries.length > 0}>
-  <header>Group records by</header>
+  <header>{$_('group_records_by')}</header>
   <div class="content">
     {#each $grouping.entries as groupEntry, index (index)}
       <GroupEntryComponent
@@ -58,7 +57,7 @@
         columnsAllowedForSelection={availableColumns.map((entry) => entry.id)}
         getColumnLabel={(processedColumn) => processedColumn?.column.name ?? ''}
         getColumnConstraintType={(column) =>
-          getColumnConstraintTypeByColumnId(column.id)}
+          getColumnConstraintTypeByColumnId(column.id, $processedColumns)}
         columnIdentifier={groupEntry.columnId}
         preprocFunctionIdentifier={groupEntry.preprocFnId}
         on:update={(e) => updateGrouping(index, e.detail)}
@@ -67,29 +66,19 @@
           index < $grouping.entries.length - 1}
       />
     {:else}
-      <span class="muted">No grouping condition has been added</span>
+      <span class="muted">{$_('no_grouping_condition_added')}</span>
     {/each}
   </div>
   <footer>
     <DropdownMenu
-      label="Add New Grouping"
+      icon={iconAddNew}
+      label={$_('add_new_grouping')}
       disabled={availableColumns.length === 0}
       triggerAppearance="secondary"
     >
       {#each availableColumns as column (column.id)}
         <ButtonMenuItem on:click={() => addGroupColumn(column)}>
-          <ColumnName
-            column={{
-              name: $processedColumns.get(column.id)?.column.name ?? '',
-              type: $processedColumns.get(column.id)?.column.type ?? '',
-              type_options:
-                $processedColumns.get(column.id)?.column.type_options ?? null,
-              display_options:
-                $processedColumns.get(column.id)?.column.display_options ??
-                null,
-              constraintsType: getColumnConstraintTypeByColumnId(column.id),
-            }}
-          />
+          <ProcessedColumnName processedColumn={column} />
         </ButtonMenuItem>
       {/each}
     </DropdownMenu>

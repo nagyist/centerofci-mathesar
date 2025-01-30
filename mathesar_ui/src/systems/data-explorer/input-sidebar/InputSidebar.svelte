@@ -1,13 +1,17 @@
 <script lang="ts">
-  import { TabContainer, Spinner } from '@mathesar-component-library';
-  import { getAvailableName } from '@mathesar/utils/db';
-  import { confirm } from '@mathesar/stores/confirmation';
+  import { _ } from 'svelte-i18n';
+
   import ErrorBox from '@mathesar/components/message-boxes/ErrorBox.svelte';
   import PhraseContainingIdentifier from '@mathesar/components/PhraseContainingIdentifier.svelte';
-  import ColumnSelectionPane from './column-selection-pane/ColumnSelectionPane.svelte';
-  import TransformationsPane from './transformations-pane/TransformationsPane.svelte';
+  import { confirm } from '@mathesar/stores/confirmation';
+  import { getAvailableName } from '@mathesar/utils/db';
+  import { Spinner, TabContainer } from '@mathesar-component-library';
+
   import type QueryManager from '../QueryManager';
   import type { ColumnWithLink } from '../utils';
+
+  import ColumnSelectionPane from './column-selection-pane/ColumnSelectionPane.svelte';
+  import TransformationsPane from './transformations-pane/TransformationsPane.svelte';
 
   export let queryManager: QueryManager;
   export let linkCollapsibleOpenState: Record<ColumnWithLink['id'], boolean> =
@@ -17,8 +21,8 @@
   $: ({ inputColumnsFetchState } = $state);
 
   const tabs = [
-    { id: 'column-selection', label: 'Select Columns' },
-    { id: 'transform-results', label: 'Transform Results' },
+    { id: 'column-selection', label: $_('select_columns') },
+    { id: 'transform-results', label: $_('transform_results') },
   ];
   let activeTab = tabs[0];
 
@@ -37,23 +41,20 @@
         title: {
           component: PhraseContainingIdentifier,
           props: {
-            pre: 'Summarize the ',
             identifier: column.name,
-            post: ' column?',
+            wrappingString: $_('summarize_column_with_identifier'),
           },
         },
         body: [
-          `By default, Mathesar shows only one related record per row when adding a
-                column with multiple related records. We recommend adding a summarization
-                step if you'd like to see related records as a list instead.`,
-          'You can manually configure a summarization later via the "Transform Results" pane.',
+          $_('summarize_column_recommendation'),
+          $_('summarize_column_configure'),
         ],
         proceedButton: {
-          label: 'Yes, summarize as a list',
+          label: $_('yes_summarize_as_list'),
           icon: undefined,
         },
         cancelButton: {
-          label: 'No, continue without summarizing',
+          label: $_('no_continue_without_summarization'),
           icon: undefined,
         },
       });
@@ -61,8 +62,8 @@
     await queryManager.update((q) => {
       const newQuery = q.withInitialColumn({
         alias,
-        id: column.id,
-        jp_path: column.jpPath,
+        attnum: column.id,
+        join_path: column.jpPath,
       });
       if (addNewAutoSummarization) {
         const autoSummarization =
@@ -84,7 +85,6 @@
 </script>
 
 <aside class="input-sidebar">
-  <header>Build your Exploration</header>
   <section class="input-pane">
     <TabContainer
       {tabs}
@@ -100,8 +100,7 @@
       {:else if inputColumnsFetchState?.state === 'success'}
         {#if activeTab?.id === 'column-selection'}
           <div class="help-text">
-            Select the columns that will be used for the exploration. Columns
-            are limited to those from the base table and it's linked tables.
+            {$_('select_columns_for_exploration_help')}
           </div>
           <ColumnSelectionPane
             {queryManager}
@@ -110,15 +109,13 @@
           />
         {:else if activeTab?.id === 'transform-results'}
           <div class="help-text">
-            Transformations can be used to summarize data, filter data, and
-            more. Note that transformations are applied in the order they are
-            listed.
+            {$_('transform_results_help')}
           </div>
           <TransformationsPane {queryManager} />
         {/if}
       {:else if inputColumnsFetchState?.state === 'failure'}
         <ErrorBox>
-          Failed to fetch column information:
+          {$_('failed_to_fetch_column_information')}
           {inputColumnsFetchState?.errors.join(';')}
         </ErrorBox>
       {/if}
@@ -128,20 +125,13 @@
 
 <style lang="scss">
   aside.input-sidebar {
-    width: var(--input-pane-width);
-    flex-basis: var(--input-pane-width);
+    height: 100%;
     border-right: 1px solid var(--slate-300);
     flex-shrink: 0;
     flex-grow: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-
-    header {
-      padding: var(--size-xx-small) var(--size-large);
-      border-bottom: 1px solid var(--slate-200);
-      font-weight: 590;
-    }
 
     .input-pane {
       flex-grow: 1;

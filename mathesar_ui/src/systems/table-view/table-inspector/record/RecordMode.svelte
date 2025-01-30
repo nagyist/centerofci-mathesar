@@ -1,61 +1,50 @@
 <script lang="ts">
-  import { Collapsible } from '@mathesar-component-library';
-  import { getSelectedRowIndex } from '@mathesar/components/sheet';
-  import { currentDatabase } from '@mathesar/stores/databases';
-  import { currentSchema } from '@mathesar/stores/schemas';
+  import { _ } from 'svelte-i18n';
+
   import { getTabularDataStoreFromContext } from '@mathesar/stores/table-data';
-  import { getUserProfileStoreFromContext } from '@mathesar/stores/userProfile';
-  import { labeledCount } from '@mathesar/utils/languageUtils';
+  import { Collapsible } from '@mathesar-component-library';
+
   import CollapsibleHeader from '../CollapsibleHeader.svelte';
+
   import RowActions from './RowActions.svelte';
 
   const tabularData = getTabularDataStoreFromContext();
-  const userProfile = getUserProfileStoreFromContext();
 
-  $: database = $currentDatabase;
-  $: schema = $currentSchema;
-  $: ({ selection, recordsData } = $tabularData);
-  $: ({ selectedCells } = selection);
-  $: selectedRowIndices = $selectedCells
-    .valuesArray()
-    .map((cell) => getSelectedRowIndex(cell));
-  $: uniquelySelectedRowIndices = Array.from(new Set(selectedRowIndices));
-
-  $: canEditTableRecords = !!$userProfile?.hasPermission(
-    { database, schema },
-    'canEditTableRecords',
-  );
+  $: ({ table, selection, recordsData } = $tabularData);
+  $: selectedRowIds = $selection.rowIds;
+  $: selectedRowCount = selectedRowIds.size;
 </script>
 
 <div class="column-mode-container">
-  {#if uniquelySelectedRowIndices.length}
-    {#if uniquelySelectedRowIndices.length > 1}
+  {#if selectedRowCount > 0}
+    {#if selectedRowCount > 1}
       <span class="records-selected-count">
-        {labeledCount(uniquelySelectedRowIndices, 'records')} selected
+        {$_('multiple_records_selected', {
+          values: { count: selectedRowCount },
+        })}
       </span>
     {/if}
-    <Collapsible isOpen triggerAppearance="plain">
-      <CollapsibleHeader slot="header" title="Actions" />
+    <Collapsible isOpen triggerAppearance="inspector">
+      <CollapsibleHeader slot="header" title={$_('actions')} />
       <div slot="content" class="content-container">
         <RowActions
-          selectedRowIndices={uniquelySelectedRowIndices}
+          {table}
+          {selectedRowIds}
           {recordsData}
-          {selection}
           columnsDataStore={$tabularData.columnsDataStore}
-          {canEditTableRecords}
         />
       </div>
     </Collapsible>
   {:else}
-    <span class="no-records-selected"
-      >Select one or more cells to view associated record properties.</span
-    >
+    <span class="no-records-selected">
+      {$_('select_cells_view_record_props')}
+    </span>
   {/if}
 </div>
 
 <style lang="scss">
   .column-mode-container {
-    padding-bottom: 1rem;
+    padding-bottom: var(--size-small);
     display: flex;
     flex-direction: column;
   }
@@ -65,11 +54,11 @@
   }
 
   .records-selected-count {
-    padding: 1rem;
+    padding: var(--size-large);
   }
 
   .content-container {
-    padding: 1rem;
+    padding: var(--size-small);
     display: flex;
     flex-direction: column;
 

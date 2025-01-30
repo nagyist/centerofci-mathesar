@@ -3,8 +3,10 @@
 
   import { LabeledInput, TextInput } from '@mathesar-component-library';
   import type { ComponentWithProps } from '@mathesar-component-library/types';
+
   import type { FieldStore } from './field';
   import FieldErrors from './FieldErrors.svelte';
+  import FieldHelp from './FieldHelp.svelte';
   import FieldLayout from './FieldLayout.svelte';
 
   type Layout = ComponentProps<LabeledInput>['layout'];
@@ -20,30 +22,44 @@
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   $: inputComponent = input?.component ?? (TextInput as typeof SvelteComponent);
   $: inputComponentProps = input?.props ?? {};
-  $: ({ showsError } = field);
+  $: ({ showsError, disabled } = field);
+  $: isStacked = layout === 'stacked';
 </script>
 
 <FieldLayout>
   {#if label || $$slots.label}
-    <LabeledInput {label} {layout} {help}>
+    <LabeledInput {layout} {label}>
       <slot name="label" slot="label" />
-      <slot name="help" slot="help" />
       <svelte:component
         this={inputComponent}
         bind:value={$field}
         hasError={$showsError}
+        disabled={$disabled}
         {...inputComponentProps}
       />
+      {#if !isStacked && (help || $$slots.help)}
+        <FieldHelp>
+          <slot name="help">{help}</slot>
+        </FieldHelp>
+      {/if}
     </LabeledInput>
   {:else}
     <svelte:component
       this={inputComponent}
       bind:value={$field}
       hasError={$showsError}
+      disabled={$disabled}
       {...inputComponentProps}
     >
       <slot />
     </svelte:component>
   {/if}
+
+  {#if isStacked && (help || $$slots.help)}
+    <FieldHelp>
+      <slot name="help">{help}</slot>
+    </FieldHelp>
+  {/if}
+
   <FieldErrors {field} />
 </FieldLayout>

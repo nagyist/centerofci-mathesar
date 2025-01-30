@@ -1,7 +1,9 @@
-import { defineConfig } from 'vite';
-import legacy from '@vitejs/plugin-legacy';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
+
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import legacy from '@vitejs/plugin-legacy';
+import { defineConfig } from 'vite';
+
 import * as data from './tsconfig.json';
 
 function getAlias() {
@@ -38,7 +40,11 @@ export default defineConfig({
   build: {
     manifest: true,
     rollupOptions: {
-      input: './src/main.ts',
+      input: {
+        main: './src/main.ts',
+        en: './src/i18n/languages/en/index.ts',
+        ja: './src/i18n/languages/ja/index.ts',
+      },
     },
     outDir: '../mathesar/static/mathesar/',
     emptyOutDir: true,
@@ -48,5 +54,6 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     testTimeout: 30000,
+    setupFiles: ['vitest-setup.config.ts'],
   },
 });

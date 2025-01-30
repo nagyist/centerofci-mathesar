@@ -1,15 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from 'svelte';
+  import { _ } from 'svelte-i18n';
+
+  import type { ConstraintType } from '@mathesar/api/rpc/constraints';
+  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
+  import { iconDeleteMajor } from '@mathesar/icons';
+  import type { ReadableMapLike } from '@mathesar/typeUtils';
   import {
     Button,
     Icon,
     InputGroup,
     Select,
   } from '@mathesar-component-library';
-  import { iconDeleteMajor } from '@mathesar/icons';
-  import type { ReadableMapLike } from '@mathesar/typeUtils';
-  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
-  import type { ConstraintType } from '@mathesar/api/types/tables/constraints';
+
   import type { GroupEntryColumnLike } from './types';
 
   type T = $$Generic;
@@ -47,7 +50,9 @@
     return allowedColumns;
   }
 
-  function getColumnConstraintTypeByColumnId(_columnId?: ColumnLikeType['id']) {
+  function getColumnConstraintTypeFromColumnId(
+    _columnId?: ColumnLikeType['id'],
+  ) {
     if (_columnId) {
       const column = columns.get(_columnId);
       if (column) {
@@ -91,7 +96,7 @@
   ) {
     return (preprocId: string) =>
       preprocId === undefined
-        ? 'Value'
+        ? $_('value')
         : _columns
             .get(_columnIdentifier)
             ?.preprocFunctions.find((entry) => entry.id === preprocId)?.name ??
@@ -117,8 +122,7 @@
         name: getColumnLabel(columnInfo),
         type: columnInfo?.column.type ?? 'unknown',
         type_options: columnInfo?.column.type_options ?? null,
-        display_options: columnInfo?.column.display_options ?? null,
-        constraintsType: getColumnConstraintTypeByColumnId(option),
+        constraintsType: getColumnConstraintTypeFromColumnId(option),
       }}
     />
   </Select>
@@ -128,7 +132,7 @@
       bind:value={preprocFunctionIdentifier}
       autoSelect="none"
       getLabel={(entry) =>
-        entry === undefined ? 'Value' : getPreprocLabel(entry)}
+        entry === undefined ? $_('value') : getPreprocLabel(entry)}
       on:change={update}
     />
   {/if}

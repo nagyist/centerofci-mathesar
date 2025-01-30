@@ -1,29 +1,33 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
+  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
+  import Form from '@mathesar/components/Form.svelte';
+  import FormField from '@mathesar/components/FormField.svelte';
   import {
+    type ProcessedColumn,
+    getTabularDataStoreFromContext,
+  } from '@mathesar/stores/table-data';
+  import { toast } from '@mathesar/stores/toast';
+  import { getColumnConstraintTypeByColumnId } from '@mathesar/utils/columnUtils';
+  import { getAvailableName } from '@mathesar/utils/db';
+  import { getErrorMessage } from '@mathesar/utils/errors';
+  import {
+    CancelOrProceedButtonPair,
     LabeledInput,
     MultiSelect,
     RadioGroup,
     TextInput,
   } from '@mathesar-component-library';
-  import { CancelOrProceedButtonPair } from '@mathesar-component-library';
-  import {
-    getTabularDataStoreFromContext,
-    type ProcessedColumn,
-  } from '@mathesar/stores/table-data';
-  import { tables } from '@mathesar/stores/tables';
-  import FormField from '@mathesar/components/FormField.svelte';
-  import { toast } from '@mathesar/stores/toast';
-  import Form from '@mathesar/components/Form.svelte';
-  import { getAvailableName } from '@mathesar/utils/db';
-  import ColumnName from '@mathesar/components/column/ColumnName.svelte';
+
   import ConstraintNameHelp from './__help__/ConstraintNameHelp.svelte';
 
   export let onClose: (() => void) | undefined = undefined;
 
   type NamingStrategy = 'auto' | 'manual';
   const namingStrategyLabelMap = new Map<NamingStrategy, string>([
-    ['auto', 'Automatically'],
-    ['manual', 'Manually'],
+    ['auto', $_('automatically')],
+    ['manual', $_('manually')],
   ]);
   const namingStrategies = [...namingStrategyLabelMap.keys()];
 
@@ -48,10 +52,10 @@
       return [];
     }
     if (!_constraintName?.trim()) {
-      return ['Name cannot be empty'];
+      return [$_('constraint_name_cannot_be_empty')];
     }
     if (_existingConstraintNames.has(_constraintName?.trim())) {
-      return ['A constraint with that name already exists'];
+      return [$_('constraint_name_already_exists')];
     }
     return [];
   }
@@ -70,7 +74,7 @@
   $: existingConstraintNames = new Set(
     $constraintsDataStore.constraints.map((c) => c.name),
   );
-  $: tableName = $tables.data.get($tabularData.id)?.name ?? '';
+  $: tableName = $tabularData.table.name;
   $: ({ processedColumns } = $tabularData);
   $: columnsInTable = Array.from($processedColumns.values());
   $: nameValidationErrors = getNameValidationErrors(
@@ -97,7 +101,7 @@
     try {
       await constraintsDataStore.add({
         columns: constraintColumns.map((c) => c.id),
-        type: 'unique',
+        type: 'u',
         name: constraintName,
       });
       // Why init before close when we also init on open? Because without init
@@ -107,8 +111,9 @@
       init();
       onClose?.();
     } catch (error) {
-      // @ts-ignore: https://github.com/centerofci/mathesar/issues/1055
-      toast.error(`Unable to add constraint. ${error.message as string}`);
+      toast.error(
+        `${$_('unable_to_add_constraint')} ${getErrorMessage(error)}`,
+      );
     }
   }
 
@@ -118,17 +123,27 @@
 </script>
 
 <div class="add-new-unique-constraint">
-  <span>New Unique Constraint</span>
   <Form>
     <FormField>
-      <LabeledInput label="Columns" layout="stacked">
+      <LabeledInput label={$_('columns')} layout="stacked">
+        <span slot="help">
+          {$_('columns_unique_values_help')}
+        </span>
         <MultiSelect
           bind:values={constraintColumns}
           options={columnsInTable}
           autoClearInvalidValues={false}
           let:option
         >
-          <ColumnName column={option.column} />
+          <ColumnName
+            column={{
+              ...option.column,
+              constraintsType: getColumnConstraintTypeByColumnId(
+                option.column.id,
+                $processedColumns,
+              ),
+            }}
+          />
         </MultiSelect>
       </LabeledInput>
     </FormField>
@@ -141,13 +156,14 @@
         on:change={handleNamingStrategyChange}
         getRadioLabel={(s) => namingStrategyLabelMap.get(s) ?? ''}
       >
-        Set Constraint Name <ConstraintNameHelp />
+        {$_('set_constraint_name')}
+        <ConstraintNameHelp />
       </RadioGroup>
     </FormField>
 
     {#if namingStrategy === 'manual'}
       <FormField errors={nameValidationErrors}>
-        <LabeledInput label="Constraint Name" layout="stacked">
+        <LabeledInput label={$_('constraint_name')} layout="stacked">
           <TextInput
             bind:value={constraintName}
             hasError={nameValidationErrors.length > 0}
@@ -160,7 +176,7 @@
   <CancelOrProceedButtonPair
     onProceed={handleSave}
     onCancel={handleCancel}
-    proceedButton={{ label: 'Add' }}
+    proceedButton={{ label: $_('add_unique_constraint') }}
     {canProceed}
     size="small"
   />

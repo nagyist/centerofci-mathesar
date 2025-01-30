@@ -1,19 +1,17 @@
 <script lang="ts">
-  import { portal, Window } from '@mathesar/component-library';
+  import { onMount } from 'svelte';
+  import { _ } from 'svelte-i18n';
+
+  import { RichText } from '@mathesar/components/rich-text';
   import TableName from '@mathesar/components/TableName.svelte';
-  import { currentDbAbstractTypes } from '@mathesar/stores/abstract-types';
   import { Meta, TabularData } from '@mathesar/stores/table-data';
-  import { getTableName } from '@mathesar/stores/tables';
-  import { getArticleForWord } from '@mathesar/utils/languageUtils';
+  import { currentTablesMap } from '@mathesar/stores/tables';
   import Pagination from '@mathesar/utils/Pagination';
+  import { Window, defined, portal } from '@mathesar-component-library';
+
   import RecordSelectorContent from './RecordSelectorContent.svelte';
   import { RecordSelectorController } from './RecordSelectorController';
-  import type { RecordSelectorPurpose } from './recordSelectorUtils';
 
-  const verbMap = new Map<RecordSelectorPurpose, string>([
-    ['dataEntry', 'Pick'],
-    ['navigation', 'Open'],
-  ]);
   /**
    * This is the distance between the top of the nested selector window and the
    * top of the content within the parent window. Within that space we have the
@@ -27,21 +25,23 @@
   export let windowPositionerElement: HTMLElement;
 
   let contentHeight = 0;
+  let controllerCanCancel = false;
 
   $: nestedController = new RecordSelectorController({
     nestingLevel: controller.nestingLevel + 1,
   });
   $: ({ tableId, purpose } = controller);
-  $: tabularData = $tableId
-    ? new TabularData({
-        id: $tableId,
-        abstractTypesMap: $currentDbAbstractTypes.data,
-        meta: new Meta({ pagination: new Pagination({ size: 10 }) }),
-        hasEnhancedPrimaryKeyCell: false,
-      })
-    : undefined;
-  $: tableName = $tableId ? getTableName($tableId) : undefined;
-  $: verb = verbMap.get($purpose) ?? '';
+  $: table = defined($tableId, (id) => $currentTablesMap.get(id));
+  $: tabularData =
+    $tableId && table
+      ? new TabularData({
+          database: table.schema.database,
+          meta: new Meta({ pagination: new Pagination({ size: 10 }) }),
+          hasEnhancedPrimaryKeyCell: false,
+          table,
+          loadIntrinsicRecordSummaries: true,
+        })
+      : undefined;
   $: nestedSelectorIsOpen = nestedController.isOpen;
   $: marginBottom = $nestedSelectorIsOpen
     ? `calc(${nestedSelectorVerticalOffset} - ${contentHeight}px)`
@@ -52,20 +52,61 @@
       controller.cancel();
     }
   }
+
+  function isElementInsideParent(
+    childElement: HTMLElement | null,
+    parentElement: HTMLElement | null,
+  ): boolean {
+    let currentNode = childElement;
+
+    while (currentNode !== null) {
+      if (currentNode === parentElement) {
+        return true; // Found the parent element
+      }
+      currentNode = currentNode.parentNode as HTMLElement | null;
+    }
+
+    return false; // Parent element not found in the hierarchy
+  }
+
+  // Prevents the RecordSelector Modal from closing for 300ms
+  // after mounting to preserve double click behaviour
+  onMount(() => {
+    setTimeout(() => {
+      controllerCanCancel = true;
+    }, 300);
+  });
+
+  function onWindowClick(event: MouseEvent) {
+    if ($nestedSelectorIsOpen) return;
+
+    const currentModal = windowPositionerElement.lastChild as HTMLElement;
+    const currentWindow = currentModal.firstChild?.firstChild as HTMLElement;
+    const isElementInside = isElementInsideParent(
+      event.target as HTMLElement | null,
+      currentWindow,
+    );
+
+    if (!isElementInside && controllerCanCancel) controller.cancel();
+  }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={handleKeydown} on:click|capture={onWindowClick} />
 
 {#if tabularData}
   <div class="record-selector-window" style="margin-bottom: {marginBottom};">
     <Window on:close={() => controller.cancel()} canScrollBody={false}>
       <span slot="title">
-        {verb}
-        {#if tableName}
-          {getArticleForWord(tableName)}
-          <TableName table={{ name: tableName }} truncate={false} />
-        {/if}
-        Record
+        <RichText
+          text={$purpose === 'dataEntry'
+            ? $_('pick_table_record')
+            : $_('open_table_record')}
+          let:slotName
+        >
+          {#if slotName === 'tableName' && table}
+            <TableName table={{ name: table.name }} truncate={false} />
+          {/if}
+        </RichText>
       </span>
 
       <RecordSelectorContent

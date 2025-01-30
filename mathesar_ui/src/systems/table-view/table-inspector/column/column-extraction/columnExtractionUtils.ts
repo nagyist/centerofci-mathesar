@@ -1,15 +1,17 @@
-import type { TableEntry } from '@mathesar/api/types/tables';
-import type { FkConstraint } from '@mathesar/api/types/tables/constraints';
+import { get } from 'svelte/store';
+import { _ } from 'svelte-i18n';
+
+import type { Constraint, FkConstraint } from '@mathesar/api/rpc/constraints';
 import { isDefinedNonNullable } from '@mathesar/component-library';
 import {
   type ValidationOutcome,
   invalid,
   valid,
 } from '@mathesar/components/form';
+import type { Table } from '@mathesar/models/Table';
 import {
-  constraintIsFk,
-  type Constraint,
   type ProcessedColumn,
+  constraintIsFk,
 } from '@mathesar/stores/table-data';
 
 import type { LinkedTable } from './columnExtractionTypes';
@@ -21,9 +23,9 @@ function getLinkedTable({
 }: {
   fkConstraint: FkConstraint;
   columns: Map<number, ProcessedColumn>;
-  tables: Map<number, TableEntry>;
+  tables: Map<number, Table>;
 }): LinkedTable | undefined {
-  const table = tables.get(fkConstraint.referent_table);
+  const table = tables.get(fkConstraint.referent_table_oid);
   if (!table) {
     return undefined;
   }
@@ -43,7 +45,7 @@ export function getLinkedTables({
 }: {
   constraints: Constraint[];
   columns: Map<number, ProcessedColumn>;
-  tables: Map<number, TableEntry>;
+  tables: Map<number, Table>;
 }): LinkedTable[] {
   return constraints
     .map((c) =>
@@ -62,7 +64,9 @@ export function validateTableIsNotLinkedViaSelectedColumn(
     linkedTable.columns.some((c) => c.id === selectedColumn.id),
   );
   const msg = (c: string, t: string) =>
-    `Cannot move linking column "${c}" to its linked table "${t}".`;
+    get(_)('cannot_move_linked_column_to_linked_table', {
+      values: { columnName: c, tableName: t },
+    });
   return offendingColumn
     ? invalid(msg(offendingColumn.column.name, linkedTable.table.name))
     : valid();

@@ -1,24 +1,110 @@
 from io import TextIOWrapper
+import tempfile
 
 import clevercsv as csv
 
-from db.identifiers import truncate_if_necessary
-from db.tables.operations.alter import update_pk_sequence_to_latest
-from mathesar.database.base import create_mathesar_engine
-from mathesar.models.base import Table
-from db.records.operations.insert import insert_records_from_csv
-from db.tables.operations.create import create_string_column_table
-from db.tables.operations.select import get_oid_from_table
-from db.tables.operations.drop import drop_table
+from db.constants import COLUMN_NAME_TEMPLATE
+from db.encoding_utils import get_sql_compatible_encoding
+from db.tables import prepare_table_for_import
+
 from mathesar.errors import InvalidTableError
-from db.constants import ID, ID_ORIGINAL, COLUMN_NAME_TEMPLATE
-from psycopg2.errors import IntegrityError, DataError
+from mathesar.models.base import DataFile
+from mathesar.imports.utils import process_column_names
 
-from mathesar.state import reset_reflection
-
+# The user-facing documentation replicates these delimiter characters. If you
+# c, process_column_nameshange this variable, please update the documentation as well.
 ALLOWED_DELIMITERS = ",\t:|;"
 SAMPLE_SIZE = 20000
 CHECK_ROWS = 10
+
+
+def import_csv(user, data_file_id, table_name, schema_oid, conn, comment=None):
+    data_file = DataFile.objects.get(id=data_file_id, user=user)
+    file_path = data_file.file.path
+    header = data_file.header
+    if table_name is None or table_name == '':
+        table_name = data_file.base_name
+    dialect = csv.dialect.SimpleDialect(
+        data_file.delimiter,
+        data_file.quotechar,
+        data_file.escapechar
+    )
+    encoding = get_file_encoding(data_file.file)
+    conversion_encoding, sql_encoding = get_sql_compatible_encoding(encoding)
+    with open(file_path, 'rb') as csv_file:
+        csv_reader = _get_sv_reader(csv_file, header, dialect)
+        column_names = process_column_names(csv_reader.fieldnames)
+    copy_sql, table_oid, db_table_name = prepare_table_for_import(
+        table_name,
+        schema_oid,
+        column_names,
+        header,
+        conn,
+        dialect.delimiter,
+        dialect.escapechar,
+        dialect.quotechar,
+        sql_encoding,
+        comment
+    )
+    _insert_csv_records(
+        copy_sql,
+        file_path,
+        encoding,
+        conversion_encoding,
+        conn
+    )
+    return {"oid": table_oid, "name": db_table_name}
+
+
+def _get_sv_reader(file, header, dialect=None):
+    encoding = get_file_encoding(file)
+    file = TextIOWrapper(file, encoding=encoding)
+    if dialect:
+        reader = csv.DictReader(file, dialect=dialect)
+    else:
+        reader = csv.DictReader(file)
+    if not header:
+        reader.fieldnames = [
+            f"{COLUMN_NAME_TEMPLATE}{i}" for i in range(len(reader.fieldnames))
+        ]
+        file.seek(0)
+
+    return reader
+
+
+def _insert_csv_records(
+    copy_sql,
+    file_path,
+    encoding,
+    conversion_encoding,
+    conn
+):
+    cursor = conn.cursor()
+    with open(file_path, 'r', encoding=encoding) as csv_file:
+        if conversion_encoding == encoding:
+            with cursor.copy(copy_sql) as copy:
+                while data := csv_file.read():
+                    copy.write(data)
+        else:
+            # File needs to be converted to compatible database supported encoding
+            with tempfile.SpooledTemporaryFile(mode='wb+', encoding=conversion_encoding) as temp_file:
+                while True:
+                    contents = csv_file.read().encode(conversion_encoding, "replace")
+                    if not contents:
+                        break
+                    temp_file.write(contents)
+                temp_file.seek(0)
+                with cursor.copy(copy_sql) as copy:
+                    while data := temp_file.read():
+                        copy.write(data)
+
+
+def is_valid_csv(data):
+    try:
+        csv.reader(data)
+    except (csv.CsvError, ValueError):
+        return False
+    return True
 
 
 def get_file_encoding(file):
@@ -36,7 +122,33 @@ def get_file_encoding(file):
     return "utf-8"
 
 
-def check_dialect(file, dialect):
+def get_sv_dialect(file):
+    """
+    Given a *sv file, generate a dialect to parse it.
+
+    Args:
+        file: _io.TextIOWrapper object, an already opened file
+
+    Returns:
+        dialect: csv.Dialect object, the dialect to parse the file
+
+    Raises:
+        InvalidTableError: If the generated dialect was unable to parse the file
+    """
+    dialect = csv.detect.Detector().detect(file.read(SAMPLE_SIZE),
+                                           delimiters=ALLOWED_DELIMITERS)
+    if dialect is None:
+        raise InvalidTableError
+
+    file.seek(0)
+    if _check_dialect(file, dialect):
+        file.seek(0)
+        return dialect
+    else:
+        raise InvalidTableError
+
+
+def _check_dialect(file, dialect):
     """
     Checks to see if we can parse the given file with the given dialect
 
@@ -65,142 +177,3 @@ def check_dialect(file, dialect):
         elif prev_num_columns != num_columns:
             return False
     return True
-
-
-def get_sv_dialect(file):
-    """
-    Given a *sv file, generate a dialect to parse it.
-
-    Args:
-        file: _io.TextIOWrapper object, an already opened file
-
-    Returns:
-        dialect: csv.Dialect object, the dialect to parse the file
-
-    Raises:
-        InvalidTableError: If the generated dialect was unable to parse the file
-    """
-    dialect = csv.detect.Detector().detect(file.read(SAMPLE_SIZE),
-                                           delimiters=ALLOWED_DELIMITERS)
-    if dialect is None:
-        raise InvalidTableError
-
-    file.seek(0)
-    if check_dialect(file, dialect):
-        file.seek(0)
-        return dialect
-    else:
-        raise InvalidTableError
-
-
-def get_sv_reader(file, header, dialect=None):
-    encoding = get_file_encoding(file)
-    file = TextIOWrapper(file, encoding=encoding)
-    if dialect:
-        reader = csv.DictReader(file, dialect=dialect)
-    else:
-        reader = csv.DictReader(file)
-    if not header:
-        reader.fieldnames = [
-            f"{COLUMN_NAME_TEMPLATE}{i}" for i in range(len(reader.fieldnames))
-        ]
-        file.seek(0)
-
-    return reader
-
-
-def create_db_table_from_data_file(data_file, name, schema, comment=None):
-    db_name = schema.database.name
-    engine = create_mathesar_engine(db_name)
-    sv_filename = data_file.file.path
-    header = data_file.header
-    dialect = csv.dialect.SimpleDialect(data_file.delimiter, data_file.quotechar,
-                                        data_file.escapechar)
-    encoding = get_file_encoding(data_file.file)
-    with open(sv_filename, 'rb') as sv_file:
-        sv_reader = get_sv_reader(sv_file, header, dialect=dialect)
-        column_names = _process_column_names(sv_reader.fieldnames)
-        table = create_string_column_table(
-            name=name,
-            schema=schema.name,
-            column_names=column_names,
-            engine=engine,
-            comment=comment,
-        )
-    try:
-        insert_records_from_csv(
-            table,
-            engine,
-            sv_filename,
-            column_names,
-            header,
-            delimiter=dialect.delimiter,
-            escape=dialect.escapechar,
-            quote=dialect.quotechar,
-            encoding=encoding
-        )
-        update_pk_sequence_to_latest(engine, table)
-    except (IntegrityError, DataError):
-        drop_table(name=name, schema=schema.name, engine=engine)
-        column_names_alt = [
-            column_name if column_name != ID else ID_ORIGINAL
-            for column_name in column_names
-        ]
-        table = create_string_column_table(
-            name=name,
-            schema=schema.name,
-            column_names=column_names_alt,
-            engine=engine,
-            comment=comment,
-        )
-        insert_records_from_csv(
-            table,
-            engine,
-            sv_filename,
-            column_names_alt,
-            header,
-            delimiter=dialect.delimiter,
-            escape=dialect.escapechar,
-            quote=dialect.quotechar,
-            encoding=encoding
-        )
-    reset_reflection(db_name=db_name)
-    return table
-
-
-def _process_column_names(column_names):
-    column_names = (
-        column_name.strip()
-        for column_name
-        in column_names
-    )
-    column_names = (
-        truncate_if_necessary(column_name)
-        for column_name
-        in column_names
-    )
-    column_names = (
-        f"{COLUMN_NAME_TEMPLATE}{i}" if name == '' else name
-        for i, name
-        in enumerate(column_names)
-    )
-    return list(column_names)
-
-
-def create_table_from_csv(data_file, name, schema, comment=None):
-    engine = create_mathesar_engine(schema.database.name)
-    db_table = create_db_table_from_data_file(
-        data_file, name, schema, comment=comment
-    )
-    db_table_oid = get_oid_from_table(db_table.name, db_table.schema, engine)
-    # Using current_objects to create the table instead of objects. objects
-    # triggers re-reflection, which will cause a race condition to create the table
-    table = Table.current_objects.get(
-        oid=db_table_oid,
-        schema=schema,
-    )
-    table.import_verified = False
-    table.save()
-    data_file.table_imported_to = table
-    data_file.save()
-    return table

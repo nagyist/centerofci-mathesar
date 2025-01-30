@@ -4,7 +4,7 @@
   border-radius: 0.285rem;
   background: #fff;
   margin: 0;
-  padding: 6px 8px;
+  padding: var(--input-padding);
   line-height: inherit;
   font-family: inherit;
   font-size: inherit;
@@ -23,12 +23,17 @@
     background: var(--slate-100);
   }
 
+  &.read-only {
+    background: var(--slate-50);
+  }
+
   &.has-error {
     border-color: var(--red-500);
     background: var(--red-100);
   }
 
   &.text-area {
-    resize: vertical;
+    resize: var(--text-area-resize, vertical);
+    min-height: var(--text-area-min-height, auto);
   }
 }

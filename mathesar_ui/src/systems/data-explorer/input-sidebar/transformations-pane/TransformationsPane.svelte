@@ -1,24 +1,28 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
+  import { iconAddNew, iconDeleteMajor } from '@mathesar/icons';
   import {
     Button,
-    Icon,
-    DropdownMenu,
     ButtonMenuItem,
-    ImmutableMap,
     Collapsible,
+    DropdownMenu,
+    Icon,
+    ImmutableMap,
   } from '@mathesar-component-library';
-  import { iconAddNew, iconDeleteMajor } from '@mathesar/icons';
-  import type QueryManager from '../../QueryManager';
-  import FilterTransformation from './FilterTransformation.svelte';
+
   import QueryFilterTransformationModel from '../../QueryFilterTransformationModel';
-  import { calcAllowedColumnsPerTransformation } from './transformationUtils';
-  import QuerySummarizationTransformationModel from '../../QuerySummarizationTransformationModel';
-  import SummarizationTransformation from './summarization/SummarizationTransformation.svelte';
-  import HideTransformation from './HideTransformation.svelte';
   import QueryHideTransformationModel from '../../QueryHideTransformationModel';
-  import SortTransformation from './SortTransformation.svelte';
-  import QuerySortTransformationModel from '../../QuerySortTransformationModel';
+  import type QueryManager from '../../QueryManager';
   import type { QueryTransformationModel } from '../../QueryModel';
+  import QuerySortTransformationModel from '../../QuerySortTransformationModel';
+  import { QuerySummarizationTransformationModel } from '../../QuerySummarizationTransformationModel';
+
+  import FilterTransformation from './FilterTransformation.svelte';
+  import HideTransformation from './HideTransformation.svelte';
+  import SortTransformation from './SortTransformation.svelte';
+  import SummarizationTransformation from './summarization/SummarizationTransformation.svelte';
+  import { calcAllowedColumnsPerTransformation } from './transformationUtils';
 
   export let queryManager: QueryManager;
 
@@ -176,23 +180,25 @@
 
   <div class="add-transform-control">
     <DropdownMenu
-      label="Add transformation step"
+      label={$_('add_transformation_step')}
       icon={iconAddNew}
       disabled={$processedColumns.size === 0}
       triggerAppearance="secondary"
     >
-      <ButtonMenuItem on:click={addFilter}>Filter</ButtonMenuItem>
+      <ButtonMenuItem on:click={addFilter}>{$_('filter')}</ButtonMenuItem>
       <ButtonMenuItem
         disabled={!isSortableColumnPresent}
-        on:click={addSortTransform}>Sort</ButtonMenuItem
+        on:click={addSortTransform}>{$_('sort')}</ButtonMenuItem
       >
       <ButtonMenuItem
         disabled={$query.hasSummarizationTransform()}
         on:click={addSummarization}
       >
-        Summarize
+        {$_('summarize')}
       </ButtonMenuItem>
-      <ButtonMenuItem on:click={addHideTransform}>Hide Columns</ButtonMenuItem>
+      <ButtonMenuItem on:click={addHideTransform}>
+        {$_('hide_columns')}
+      </ButtonMenuItem>
     </DropdownMenu>
   </div>
 </div>

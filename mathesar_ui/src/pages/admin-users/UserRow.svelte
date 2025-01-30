@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Icon } from '@mathesar-component-library';
   import { getEditUsersPageUrl } from '@mathesar/routes/urls';
   import type { UserModel } from '@mathesar/stores/users';
-  import { getUserTypeInfoFromUserModel } from '@mathesar/systems/users-and-permissions';
+  import { getUserTypeInfoFromUserModel } from '@mathesar/systems/users';
+  import { Icon } from '@mathesar-component-library';
 
   export let user: UserModel;
 
@@ -28,7 +28,7 @@
     {/if}
   </div>
   <div class="user-type">
-    <Icon class="icon" {...userTypeInfo.icon} />
+    <Icon {...userTypeInfo.icon} size="0.9rem" />
     <span>{userTypeInfo.displayName}</span>
   </div>
 </a>
@@ -83,9 +83,5 @@
     padding: 0.25rem 0.5rem;
     border-radius: 1.17rem;
     font-size: var(--text-size-small);
-
-    :global(.icon) {
-      font-size: 0.9em;
-    }
   }
 </style>

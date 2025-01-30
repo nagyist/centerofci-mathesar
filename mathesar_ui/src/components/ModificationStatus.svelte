@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
-  import type { RequestStatus } from '@mathesar/api/utils/requestUtils';
+  import { _ } from 'svelte-i18n';
+
+  import type { RequestStatus } from '@mathesar/api/rest/utils/requestUtils';
+
   import StatusIndicator from './StatusIndicator.svelte';
 
   let incomingRequestState: RequestStatus['state'] | undefined;
@@ -72,10 +75,10 @@
     <StatusIndicator
       {state}
       messages={{
-        processing: 'Saving Changes',
-        failure: 'Unable to save changes',
-        warning: 'Unsaved Changes',
-        success: 'All Changes Saved',
+        processing: $_('saving_changes'),
+        failure: $_('unable_to_save_changes'),
+        warning: $_('unsaved_changes'),
+        success: $_('all_changes_saved'),
       }}
     />
   </span>

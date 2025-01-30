@@ -1,14 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { InputGroupText, Select } from '@mathesar-component-library';
-  import {
-    filterCombinations,
-    defaultFilterCombination,
-    getTabularDataStoreFromContext,
-    type FilterEntry,
-  } from '@mathesar/stores/table-data';
-  import type { FilterCombination } from '@mathesar/api/types/tables/records';
+  import { _ } from 'svelte-i18n';
+
   import { FilterEntry as FilterEntryComponent } from '@mathesar/components/filter-entry';
+  import {
+    type FilterEntry,
+    type ProcessedColumns,
+    defaultFilterCombination,
+    filterCombinations,
+  } from '@mathesar/stores/table-data';
+  import type { FilterCombination } from '@mathesar/stores/table-data/filtering';
+  import type RecordSummaryStore from '@mathesar/stores/table-data/record-summaries/RecordSummaryStore';
+  import { getColumnConstraintTypeByColumnId } from '@mathesar/utils/columnUtils';
+  import { InputGroupText, Select } from '@mathesar-component-library';
 
   const dispatch = createEventDispatcher<{
     remove: number;
@@ -16,32 +20,29 @@
     updateCombination: FilterCombination;
   }>();
 
-  const tabularData = getTabularDataStoreFromContext();
-  $: ({ processedColumns, recordsData } = $tabularData);
-
+  export let processedColumns: ProcessedColumns;
+  export let recordSummaries: RecordSummaryStore;
   export let entries: FilterEntry[];
   export let filterCombination: FilterCombination = defaultFilterCombination;
 </script>
 
 {#each entries as entry, index (entry)}
   <FilterEntryComponent
-    columns={$processedColumns}
+    columns={processedColumns}
     getColumnLabel={(column) =>
-      $processedColumns.get(column.id)?.column.name ?? ''}
-    getColumnConstraintType={(column) => {
-      const linkFkType = $processedColumns.get(column.id)?.linkFk?.type;
-      return linkFkType ? [linkFkType] : undefined;
-    }}
+      processedColumns.get(column.id)?.column.name ?? ''}
+    getColumnConstraintType={(column) =>
+      getColumnConstraintTypeByColumnId(column.id, processedColumns)}
     bind:columnIdentifier={entry.columnId}
     bind:conditionIdentifier={entry.conditionId}
     bind:value={entry.value}
     numberOfFilters={entries.length}
     on:removeFilter={() => dispatch('remove', index)}
     on:update
-    recordSummaryStore={recordsData.recordSummaries}
+    recordSummaryStore={recordSummaries}
   >
     {#if index === 0}
-      <InputGroupText>where</InputGroupText>
+      <InputGroupText>{$_('where')}</InputGroupText>
     {:else if index === 1}
       <Select
         options={filterCombinations}

@@ -1,22 +1,26 @@
 <script lang="ts">
-  import { Icon, iconExternalLink } from '@mathesar/component-library';
+  import { _ } from 'svelte-i18n';
+
   import TableName from '@mathesar/components/TableName.svelte';
   import { iconConstraint } from '@mathesar/icons';
   import { storeToGetTablePageUrl } from '@mathesar/stores/storeBasedUrls';
   import type { ProcessedColumn } from '@mathesar/stores/table-data';
-  import { tables } from '@mathesar/stores/tables';
+  import { currentTablesData } from '@mathesar/stores/tables';
+  import { Icon, iconExternalLink } from '@mathesar-component-library';
 
   export let type: 'primaryKey' | 'foreignKey';
   export let column: ProcessedColumn;
 
-  $: linkedTableId = column.linkFk?.referent_table;
-  $: linkedTable = linkedTableId ? $tables.data.get(linkedTableId) : undefined;
+  $: linkedTableId = column.linkFk?.referent_table_oid;
+  $: linkedTable = linkedTableId
+    ? $currentTablesData.tablesMap.get(linkedTableId)
+    : undefined;
 </script>
 
 <div class="specifier-tag-container">
   {#if type === 'foreignKey' && linkedTable}
     <div class="fk-container">
-      <span>Linked To</span>
+      <span>{$_('linked_to')}</span>
       <a
         class="specifier-tag"
         href={$storeToGetTablePageUrl({ tableId: linkedTableId })}
@@ -28,7 +32,7 @@
   {:else if type === 'primaryKey'}
     <div class="specifier-tag">
       <Icon {...iconConstraint} />
-      <span>Primary Key</span>
+      <span>{$_('primary_key')}</span>
     </div>
   {/if}
 </div>

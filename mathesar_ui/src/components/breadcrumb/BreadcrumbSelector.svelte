@@ -7,13 +7,22 @@
   } from '@mathesar/component-library';
   import TextInputWithPrefix from '@mathesar/component-library/text-input/TextInputWithPrefix.svelte';
   import { iconExpandRight } from '@mathesar/icons';
-  import { labeledCount } from '@mathesar/utils/languageUtils';
-  import BreadcrumbSelectorRow from './BreadcrumbSelectorRow.svelte';
-  import type { BreadcrumbSelectorData } from './breadcrumbTypes';
-  import { filterBreadcrumbSelectorData } from './breadcrumbUtils';
+  import { modal } from '@mathesar/stores/modal';
 
-  export let data: BreadcrumbSelectorData;
+  import ConnectDatabaseModal from '../../systems/databases/create-database/ConnectDatabaseModal.svelte';
+
+  import BreadcrumbSelectorRow from './BreadcrumbSelectorRow.svelte';
+  import BreadcrumbSelectorSection from './BreadcrumbSelectorSection.svelte';
+  import type {
+    BreadcrumbSelectorEntry,
+    BreadcrumbSelectorSectionData,
+  } from './breadcrumbTypes';
+
+  const connectDatabaseModalController = modal.spawnModalController();
+
+  export let sections: BreadcrumbSelectorSectionData[];
   export let triggerLabel: string;
+  export let persistentLinks: BreadcrumbSelectorEntry[] = [];
 
   let triggerElement: HTMLButtonElement;
   let isOpen = false;
@@ -26,11 +35,6 @@
   } else {
     filterString = '';
   }
-
-  // Filter the selector data based on text input
-  $: processedData = filterString
-    ? filterBreadcrumbSelectorData(data, filterString)
-    : data;
 </script>
 
 <div class="entity-switcher" class:is-open={isOpen}>
@@ -62,47 +66,37 @@
           bind:element={textInputEl}
         />
       </div>
-      <div class="results">
-        {#each [...processedData] as [categoryName, entries] (categoryName)}
-          <!-- data coming down from parent can have categories with 0 items: we
-        don't want to render that. -->
-          {#if entries.length > 0}
-            <div class="section-name">
-              {#if filterString?.length === 0}
-                {categoryName}
-              {:else}
-                {labeledCount(entries, 'matches')}
-                for
-                <b>{filterString}</b>
-                {processedData.size > 1 ? `in ${categoryName}` : ''}
-              {/if}
-            </div>
-            <ul class="items">
-              {#each entries as entry (entry.href)}
-                <BreadcrumbSelectorRow
-                  {entry}
-                  {filterString}
-                  closeSelector={() => {
-                    isOpen = false;
-                  }}
-                />
-              {/each}
-            </ul>
-          {/if}
-        {:else}
-          {#if filterString.length > 0}
-            <div class="section-name">
-              No matches for <b>{filterString}</b>
-            </div>
-          {/if}
+      <div class="sections">
+        {#each sections as section (section.label)}
+          <BreadcrumbSelectorSection
+            {section}
+            {filterString}
+            closeSelector={() => {
+              isOpen = false;
+            }}
+          />
         {/each}
       </div>
+      {#if persistentLinks.length}
+        <ul class="actions">
+          {#each persistentLinks as entry (entry.href)}
+            <BreadcrumbSelectorRow
+              {entry}
+              closeSelector={() => {
+                isOpen = false;
+              }}
+            />
+          {/each}
+        </ul>
+      {/if}
     </div>
   </AttachableDropdown>
 </div>
 
+<ConnectDatabaseModal controller={connectDatabaseModalController} />
+
 <style lang="scss">
-  :global(.breadcrumb-selector-dropdown) {
+  .entity-switcher :global(.breadcrumb-selector-dropdown) {
     display: flex;
   }
   .entity-switcher-content {
@@ -111,17 +105,22 @@
     display: grid;
     grid-template: auto 1fr / 1fr;
     grid-gap: 0.5rem;
+    max-height: calc(100vh - 2rem);
   }
-  .results {
+  .sections {
     overflow-y: auto;
+    display: grid;
+    grid-gap: 0.5rem;
   }
-  .section-name {
-    margin: 0.25rem 0;
-  }
-  .items {
+  .actions {
     list-style: none;
-    padding-left: 0.5rem;
     margin: 0;
+  }
+  .actions {
+    margin-top: var(--size-super-ultra-small);
+    padding-left: 0;
+    padding-top: var(--size-super-ultra-small);
+    border-top: 1px solid var(--slate-300);
   }
   .entity-switcher .trigger {
     border: 1px solid var(--slate-400);

@@ -1,64 +1,71 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
   import { active } from 'tinro';
 
-  import { Icon } from '@mathesar-component-library';
-  import { iconSettingsMajor, iconMultipleUsers } from '@mathesar/icons';
   import {
+    iconMultipleUsers,
+    iconSettingsMajor,
+    iconSettingsMinor,
+  } from '@mathesar/icons';
+  import {
+    ADMIN_SETTINGS_PAGE_URL,
     ADMIN_UPDATE_PAGE_URL,
     ADMIN_USERS_PAGE_URL,
   } from '@mathesar/routes/urls';
   import { getReleaseDataStoreFromContext } from '@mathesar/stores/releases';
+  import { Menu, MenuItemContents } from '@mathesar-component-library';
 
   const releaseDataStore = getReleaseDataStoreFromContext();
 
   $: upgradable = $releaseDataStore?.value?.upgradeStatus === 'upgradable';
 </script>
 
-<ul role="menu" class="admin-navigation-menu">
-  <li role="menuitem">
-    <a href={ADMIN_UPDATE_PAGE_URL} use:active class="passthrough">
-      <Icon {...iconSettingsMajor} hasNotificationDot={upgradable} />
-      <span>Update</span>
+<div class="admin-navigation">
+  <Menu>
+    <a
+      role="menuitem"
+      href={ADMIN_UPDATE_PAGE_URL}
+      class="menu-item menu-item-link"
+      use:active
+    >
+      <MenuItemContents
+        icon={iconSettingsMajor}
+        hasNotificationDot={upgradable}
+      >
+        {$_('update')}
+      </MenuItemContents>
     </a>
-  </li>
-  <li role="menuitem">
-    <a href={ADMIN_USERS_PAGE_URL} use:active class="passthrough">
-      <Icon {...iconMultipleUsers} />
-      <span>Users</span>
+    <a
+      role="menuitem"
+      href={ADMIN_USERS_PAGE_URL}
+      class="menu-item menu-item-link"
+      use:active
+    >
+      <MenuItemContents icon={iconMultipleUsers}>
+        {$_('users')}
+      </MenuItemContents>
     </a>
-  </li>
-</ul>
+    <a
+      role="menuitem"
+      href={ADMIN_SETTINGS_PAGE_URL}
+      class="menu-item menu-item-link"
+      use:active
+    >
+      <MenuItemContents icon={iconSettingsMinor}>
+        {$_('settings')}
+      </MenuItemContents>
+    </a>
+  </Menu>
+</div>
 
 <style lang="scss">
-  .admin-navigation-menu {
-    list-style-type: none;
-    padding-right: 1rem;
-    padding-left: 0;
-
-    li {
-      font-size: var(--text-size-large);
-      margin-top: 0.15rem;
-      position: relative;
-    }
-
-    a {
-      display: flex;
-      align-items: center;
-      padding: 0.5rem;
-      border-radius: var(--border-radius-m);
-      cursor: pointer;
-
-      > :global(* + *) {
-        margin-left: 0.5rem;
-      }
-
-      &:hover {
-        background-color: var(--sand-200);
-      }
-
-      &:global(.active) {
-        background-color: var(--sand-200);
-      }
-    }
+  .admin-navigation {
+    font-size: var(--text-size-base);
+    --Menu__min-width: 100%;
+    --Menu__item-border-radius: var(--border-radius-m);
+    --Menu__item-hover-background: var(--sand-100);
+    --Menu__item-active-background: var(--sand-200);
+    --Menu__item-active-hover-background: var(--sand-200);
+    --Menu__item-focus-outline-color: var(--sand-300);
   }
 </style>
